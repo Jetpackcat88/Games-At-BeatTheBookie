@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Beat the Bookie Arcade</title>
+<meta name="description" content="A homemade arcade of free browser games — play instantly, no download.">
+<style>
+  :root{
+    --bg:#12141d; --bg2:#171a26; --panel:#1d2130; --panel2:#232838;
+    --line:#2e3447; --line2:#3a4159;
+    --ink:#eef0f7; --muted:#9aa0ba; --muted2:#6f7691;
+    --accent:#ff7a1a; --accent2:#ffb05a; --accent-deep:#d6610c;
+    --good:#46d27a;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html{scroll-behavior:smooth;}
+  body{
+    min-height:100vh;
+    background:
+      radial-gradient(80% 50% at 50% -10%, #232a44 0%, transparent 60%),
+      linear-gradient(180deg, #12141d 0%, #0e1018 100%);
+    background-attachment:fixed;
+    color:var(--ink);
+    font-family:"Segoe UI",system-ui,-apple-system,sans-serif;
+  }
+
+  /* ---- top bar ---- */
+  .topbar{
+    position:sticky;top:0;z-index:20;
+    background:rgba(18,20,29,.85);
+    backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--line);
+  }
+  .topbar-inner{
+    max-width:1120px;margin:0 auto;padding:12px 18px;
+    display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+  }
+  .logo{display:flex;align-items:center;gap:10px;font-weight:800;font-size:19px;letter-spacing:.02em;white-space:nowrap;}
+  .logo .mark{
+    width:34px;height:34px;border-radius:9px;flex:0 0 auto;
+    background:linear-gradient(135deg,var(--accent),#ff5a36);
+    display:grid;place-items:center;font-size:19px;
+    box-shadow:0 3px 0 var(--accent-deep), 0 0 18px rgba(255,122,26,.4);
+  }
+  .logo .sub{color:var(--accent);}
+  .search{
+    margin-left:auto;flex:1 1 200px;max-width:340px;position:relative;
+  }
+  .search input{
+    width:100%;background:var(--panel);border:1px solid var(--line2);
+    color:var(--ink);border-radius:10px;padding:9px 12px 9px 34px;font-size:14px;
+    font-family:inherit;outline:none;
+  }
+  .search input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(255,122,26,.18);}
+  .search svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);opacity:.5;}
+
+  /* ---- hero strip ---- */
+  .hero{
+    max-width:1120px;margin:0 auto;padding:30px 18px 6px;
+  }
+  .hero h1{font-size:clamp(24px,4vw,34px);font-weight:800;letter-spacing:.01em;}
+  .hero h1 .o{color:var(--accent);}
+  .hero p{color:var(--muted);margin-top:6px;font-size:15px;}
+
+  .section-head{
+    max-width:1120px;margin:26px auto 0;padding:0 18px;
+    display:flex;align-items:center;gap:10px;
+  }
+  .section-head h2{font-size:14px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);}
+  .section-head .rule{flex:1;height:1px;background:var(--line);}
+  .section-head .tag{font-size:12px;color:var(--accent);font-weight:700;letter-spacing:.04em;}
+
+  /* ---- grid ---- */
+  main{max-width:1120px;margin:0 auto;padding:16px 18px 60px;}
+  .grid{
+    display:grid;gap:14px;
+    grid-template-columns:repeat(auto-fill,minmax(168px,1fr));
+  }
+  .card{
+    display:block;text-decoration:none;color:inherit;
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:14px;overflow:hidden;
+    transition:transform .14s ease, border-color .14s ease, box-shadow .14s ease;
+  }
+  .card:hover, .card:focus-visible{
+    transform:translateY(-4px);
+    border-color:var(--accent);
+    box-shadow:0 12px 28px rgba(0,0,0,.45), 0 0 0 1px var(--accent);
+    outline:none;
+  }
+  .thumb{
+    position:relative;aspect-ratio:1/1;display:grid;place-items:center;overflow:hidden;
+  }
+  .thumb .glyph{
+    font-size:54px;line-height:1;filter:drop-shadow(0 4px 10px rgba(0,0,0,.4));
+    transition:transform .2s ease;
+  }
+  .card:hover .thumb .glyph{transform:scale(1.12) rotate(-3deg);}
+  .thumb .initials{
+    font-weight:800;font-size:46px;color:#fff;letter-spacing:.02em;
+    text-shadow:0 3px 0 rgba(0,0,0,.25);
+  }
+  .thumb::after{
+    content:"";position:absolute;inset:0;
+    background:linear-gradient(180deg,transparent 55%,rgba(0,0,0,.35));
+  }
+  .ribbon{
+    position:absolute;top:8px;left:8px;z-index:2;
+    background:var(--accent);color:#1a1206;font-size:10.5px;font-weight:800;
+    letter-spacing:.08em;border-radius:5px;padding:3px 7px;
+    box-shadow:0 2px 6px rgba(0,0,0,.4);
+  }
+  .play-overlay{
+    position:absolute;inset:0;z-index:2;display:grid;place-items:center;
+    background:rgba(10,12,18,.45);opacity:0;transition:opacity .14s ease;
+  }
+  .card:hover .play-overlay{opacity:1;}
+  .play-overlay .btn{
+    background:var(--accent);color:#1a1206;font-weight:800;font-size:14px;
+    padding:9px 20px;border-radius:999px;box-shadow:0 4px 0 var(--accent-deep);
+  }
+  .meta{padding:10px 12px 12px;border-top:1px solid var(--line);}
+  .meta .title{font-weight:700;font-size:15px;line-height:1.2;}
+  .meta .desc{font-size:12px;color:var(--muted2);margin-top:3px;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+
+  .empty, .loading{
+    grid-column:1/-1;text-align:center;color:var(--muted);padding:50px 16px;font-size:15px;
+  }
+  .loading .spin{
+    width:30px;height:30px;margin:0 auto 14px;border-radius:50%;
+    border:3px solid var(--line2);border-top-color:var(--accent);
+    animation:spin 0.8s linear infinite;
+  }
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .empty code{background:var(--panel2);padding:2px 6px;border-radius:5px;color:var(--accent);}
+
+  footer{
+    max-width:1120px;margin:0 auto;padding:24px 18px 50px;text-align:center;
+    color:var(--muted2);font-size:13px;line-height:1.7;border-top:1px solid var(--line);
+  }
+  footer a{color:var(--accent);text-decoration:none;font-weight:600;}
+
+  @media (prefers-reduced-motion:reduce){*{transition:none !important;scroll-behavior:auto;}.spin{animation:none;}}
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="topbar-inner">
+      <div class="logo"><span class="mark">🎮</span> Beat the Bookie <span class="sub">Arcade</span></div>
+      <div class="search">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.5" y2="16.5"/></svg>
+        <input id="search" type="search" placeholder="Search games…" autocomplete="off" aria-label="Search games">
+      </div>
+    </div>
+  </div>
+
+  <div class="hero">
+    <h1>Free <span class="o">browser games</span></h1>
+    <p>Homemade, instant-play, works on phone or laptop. Pick one and go.</p>
+  </div>
+
+  <div class="section-head">
+    <h2>All Games</h2><div class="rule"></div><span class="tag" id="sectionTag"></span>
+  </div>
+
+  <main>
+    <div class="grid" id="grid">
+      <div class="loading"><div class="spin"></div>Loading the arcade…</div>
+    </div>
+  </main>
+
+  <footer>
+    Made for fun at <a href="https://beatthebookie.net">beatthebookie.net</a> · best on a phone or tablet
+  </footer>
+
+<script>
+/* =======================================================================
+   SETUP — fill in ONCE and you never edit this file again.
+
+   Point it at the GitHub repo that Vercel deploys, and the menu builds
+   itself from whatever .html games live there. Push a new game → it shows
+   up on its own.
+   ======================================================================= */
+const CONFIG = {
+  githubUser: "",          // e.g. "colmodwyer"   <-- your GitHub username
+  githubRepo: "",          // e.g. "btb-games"     <-- the repo Vercel builds
+  githubPath: "",          // subfolder if games aren't at the repo root, else ""
+  githubBranch: "main",    // or "master"
+
+  ignore: ["index.html", "404.html", "template.html"],  // files to hide
+
+  /* OPTIONAL polish. Auto-discovered games already get a tidy name + icon;
+     add a line here only if you want to override one. Everything is optional. */
+  overrides: {
+    "jetpack-cat.html":        { glyph:"🚀", accent:"#3fa9ff", desc:"Boost past the obstacles" },
+    "sunny-acres.html":        { glyph:"🌻", accent:"#f4b73c", desc:"Tend a little garden" },
+    "jellybean-stampede.html": { glyph:"🫘", accent:"#ff6f9c", desc:"Grow a wobbly crowd" },
+    "gemhound.html":           { glyph:"💎", accent:"#9a6bff", desc:"Match-three combos" },
+    "the-longest-dog.html":    { glyph:"🌭", accent:"#e8954a", desc:"A sausage-dog snake" },
+    "bubble-maniac.html":      { glyph:"🫧", accent:"#37c4e8", desc:"Pop through the deep" },
+    "wizard-rush.html":        { glyph:"🧙", accent:"#7e57d6", desc:"Dash through the runes" },
+    "rune-rush.html":          { glyph:"🪄", accent:"#7e57d6", desc:"Cast and dash" }
+  }
+};
+/* ======================================================================= */
+
+const grid = document.getElementById("grid");
+const searchInput = document.getElementById("search");
+const sectionTag = document.getElementById("sectionTag");
+let ALL = [];
+
+/* turn "the-longest-dog.html" into "The Longest Dog" */
+function prettyName(file){
+  return file.replace(/\.html?$/i,"")
+    .replace(/[-_]+/g," ")
+    .replace(/\s+/g," ").trim()
+    .replace(/\b\w/g, c => c.toUpperCase());
+}
+/* deterministic two-colour gradient from the filename, for the thumbnail */
+function hashHue(str){ let h=0; for(let i=0;i<str.length;i++) h=(h*31+str.charCodeAt(i))>>>0; return h%360; }
+function thumbBg(file, accent){
+  if (accent) return `linear-gradient(150deg, ${accent}, ${shade(accent,-40)})`;
+  const h = hashHue(file);
+  return `linear-gradient(150deg, hsl(${h} 70% 52%), hsl(${(h+40)%360} 65% 38%))`;
+}
+function shade(hex,amt){
+  const m = hex.replace('#',''); if (m.length!==6) return hex;
+  const n = parseInt(m,16);
+  const r=Math.max(0,Math.min(255,(n>>16)+amt)), g=Math.max(0,Math.min(255,((n>>8)&255)+amt)), b=Math.max(0,Math.min(255,(n&255)+amt));
+  return "#"+((r<<16)|(g<<8)|b).toString(16).padStart(6,"0");
+}
+function initials(name){
+  return name.split(" ").slice(0,2).map(w=>w[0]||"").join("").toUpperCase();
+}
+
+/* build a game object from a filename */
+function toGame(file){
+  const ov = CONFIG.overrides[file.toLowerCase()] || {};
+  return {
+    file,
+    name: ov.title || prettyName(file),
+    glyph: ov.glyph || null,
+    accent: ov.accent || null,
+    desc: ov.desc || "Tap to play"
+  };
+}
+
+/* ---------- discovery: GitHub → games.json → built-in fallback ---------- */
+async function discover(){
+  // 1) GitHub repo contents (zero-maintenance: new pushes appear automatically)
+  if (CONFIG.githubUser && CONFIG.githubRepo){
+    const cacheKey = "arcadeGames:"+CONFIG.githubUser+"/"+CONFIG.githubRepo;
+    try{
+      const cached = JSON.parse(localStorage.getItem(cacheKey)||"null");
+      if (cached && Date.now()-cached.t < 3600e3 && cached.files.length) {
+        revalidateGitHub(cacheKey); // refresh quietly in the background
+        return cached.files;
+      }
+    }catch(e){}
+    const files = await fetchGitHub();
+    if (files){ try{ localStorage.setItem(cacheKey, JSON.stringify({t:Date.now(), files})); }catch(e){} return files; }
+  }
+  // 2) a games.json manifest sitting next to this page
+  try{
+    const res = await fetch("games.json", {cache:"no-cache"});
+    if (res.ok){
+      const data = await res.json();
+      // accept either ["a.html", ...] or [{file,...}, ...]
+      return data.map(x => typeof x === "string" ? x : x.file).filter(Boolean);
+    }
+  }catch(e){}
+  // 3) nothing configured — show a friendly setup note
+  return null;
+}
+async function fetchGitHub(){
+  const path = CONFIG.githubPath ? "/"+CONFIG.githubPath.replace(/^\/|\/$/g,"") : "";
+  const url = `https://api.github.com/repos/${CONFIG.githubUser}/${CONFIG.githubRepo}/contents${path}?ref=${CONFIG.githubBranch}`;
+  try{
+    const res = await fetch(url, {headers:{"Accept":"application/vnd.github+json"}});
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (!Array.isArray(data)) return null;
+    return data.filter(f => f.type==="file" && /\.html?$/i.test(f.name)).map(f => f.name);
+  }catch(e){ return null; }
+}
+function revalidateGitHub(cacheKey){
+  fetchGitHub().then(files => {
+    if (files && files.length){
+      try{ localStorage.setItem(cacheKey, JSON.stringify({t:Date.now(), files})); }catch(e){}
+    }
+  });
+}
+
+/* ---------- "NEW" flagging: anything not seen on a previous visit ---------- */
+function markNew(files){
+  let seen = [];
+  try{ seen = JSON.parse(localStorage.getItem("arcadeSeen")||"[]"); }catch(e){}
+  const firstEverVisit = seen.length===0;
+  const newOnes = firstEverVisit ? [] : files.filter(f => !seen.includes(f));
+  try{ localStorage.setItem("arcadeSeen", JSON.stringify(Array.from(new Set([...seen, ...files])))); }catch(e){}
+  return new Set(newOnes);
+}
+
+/* ---------- render ---------- */
+function render(list){
+  grid.innerHTML = "";
+  if (!list.length){
+    grid.innerHTML = `<div class="empty">No games match that search.</div>`;
+    return;
+  }
+  for (const g of list){
+    const a = document.createElement("a");
+    a.className = "card";
+    a.href = g.file;
+    const inner = g.glyph
+      ? `<span class="glyph">${g.glyph}</span>`
+      : `<span class="initials">${initials(g.name)}</span>`;
+    a.innerHTML = `
+      <div class="thumb" style="background:${thumbBg(g.file, g.accent)}">
+        ${g._new ? '<span class="ribbon">NEW</span>' : ''}
+        ${inner}
+        <div class="play-overlay"><span class="btn">Play ▶</span></div>
+      </div>
+      <div class="meta">
+        <div class="title">${g.name}</div>
+        <div class="desc">${g.desc}</div>
+      </div>`;
+    grid.appendChild(a);
+  }
+}
+function applySearch(){
+  const q = searchInput.value.trim().toLowerCase();
+  render(q ? ALL.filter(g => g.name.toLowerCase().includes(q)) : ALL);
+}
+searchInput.addEventListener("input", applySearch);
+
+/* ---------- boot ---------- */
+(async () => {
+  const files = await discover();
+  if (files === null){
+    grid.innerHTML = `<div class="empty">
+      Almost there — open <code>index.html</code> and fill in your GitHub
+      <code>githubUser</code> and <code>githubRepo</code> at the top of the script,
+      <br>or drop a <code>games.json</code> next to this file.
+    </div>`;
+    sectionTag.textContent = "";
+    return;
+  }
+  const clean = files.filter(f => !CONFIG.ignore.map(s=>s.toLowerCase()).includes(f.toLowerCase()));
+  const newSet = markNew(clean);
+  ALL = clean.map(toGame).map(g => (g._new = newSet.has(g.file), g))
+             .sort((a,b)=> (b._new===a._new) ? a.name.localeCompare(b.name) : (b._new?1:-1));
+  sectionTag.textContent = ALL.length + (ALL.length===1?" game":" games");
+  render(ALL);
+})();
+</script>
+</body>
+</html>
