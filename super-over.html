@@ -1,0 +1,908 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Super Over Cricket 🏏</title>
+<style>
+  :root{
+    --pitch:#caa26a; --grass:#2f9e4f; --grass2:#2b8f47; --rope:#f4f0e6;
+    --ink:#0e2a18; --cream:#f4f7ee; --gold:#ffd24d; --gold-deep:#d6951f; --sky:#1b2a52;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;}
+  body{
+    background:linear-gradient(180deg,#243a6e 0%,#1b2a52 45%,#13361f 100%);
+    font-family:"Trebuchet MS","Segoe UI",system-ui,sans-serif;
+    color:var(--cream);
+    display:flex;align-items:center;justify-content:center;
+    overflow:hidden;touch-action:none;
+  }
+  .display{font-family:"Georgia","Iowan Old Style",serif;letter-spacing:.01em;}
+  #wrap{position:relative;display:flex;flex-direction:column;align-items:center;
+    height:min(100vh,100%);justify-content:center;}
+  #wrap:fullscreen{width:100%;height:100%;
+    background:linear-gradient(180deg,#243a6e 0%,#1b2a52 45%,#13361f 100%);}
+  #stage{position:relative;}
+  canvas{
+    display:block;height:min(94vh,178vw);width:auto;
+    border:5px solid #0c1f3a;
+    border-radius:20px;
+    box-shadow:0 10px 0 rgba(0,0,0,.4), 0 22px 48px rgba(0,0,0,.5);
+    background:#15361f;
+  }
+  #wrap:fullscreen canvas{height:100vh;border-radius:0;border:none;box-shadow:none;}
+  #hud{
+    position:absolute;top:9px;left:9px;right:9px;
+    display:flex;justify-content:space-between;align-items:flex-start;gap:6px;
+    pointer-events:none;
+  }
+  .plaque{
+    background:rgba(8,20,38,.82);
+    border:2px solid var(--gold-deep);
+    border-radius:11px;color:var(--cream);
+    padding:4px 11px;font-size:clamp(13px,3vmin,17px);font-weight:bold;
+    box-shadow:0 2px 8px rgba(0,0,0,.4);white-space:nowrap;text-align:center;
+  }
+  .plaque small{opacity:.6;font-size:.58em;display:block;letter-spacing:.12em;}
+  .plaque .gold{color:var(--gold);}
+  #btns{display:flex;gap:5px;pointer-events:auto;}
+  .iconBtn{
+    background:rgba(8,20,38,.82);border:2px solid var(--gold-deep);border-radius:11px;
+    color:var(--cream);font-size:clamp(13px,2.8vmin,16px);padding:4px 9px;cursor:pointer;
+  }
+  .iconBtn:active{transform:translateY(1px);}
+  .iconBtn.off{opacity:.45;}
+  .overlay{
+    position:absolute;inset:0;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    text-align:center;gap:12px;padding:18px;
+    background:rgba(8,16,32,.62);
+    border-radius:18px;backdrop-filter:blur(4px);
+  }
+  #wrap:fullscreen .overlay{border-radius:0;}
+  .card{
+    background:linear-gradient(180deg,#1c2c52,#142039);
+    border:2px solid var(--gold-deep);border-radius:22px;
+    padding:22px 26px;max-width:390px;
+    box-shadow:0 8px 30px rgba(0,0,0,.5);
+  }
+  .card h1{
+    font-size:clamp(28px,7vmin,44px);line-height:1;margin-bottom:2px;
+    color:var(--gold);text-shadow:2px 2px 0 #0c1f3a;
+  }
+  .card .sub{font-size:clamp(11px,2.6vmin,13px);opacity:.65;letter-spacing:.2em;text-transform:uppercase;margin-bottom:10px;}
+  .card p{font-size:clamp(13px,3vmin,15px);line-height:1.5;margin:7px 0;}
+  .card b{color:var(--gold);}
+  .modes{display:flex;gap:8px;justify-content:center;margin:14px 0 2px;}
+  button.mode{
+    border:2px solid var(--gold-deep);background:#142039;color:var(--cream);
+    border-radius:13px;padding:9px 15px;cursor:pointer;font-family:inherit;
+    font-size:clamp(13px,2.9vmin,16px);line-height:1.25;
+  }
+  button.mode small{display:block;font-size:.72em;opacity:.6;}
+  button.mode.sel{background:linear-gradient(180deg,var(--gold),var(--gold-deep));color:#2a1c05;border-color:#fff0b8;}
+  button.play{
+    margin-top:12px;border:none;border-radius:999px;
+    background:linear-gradient(180deg,#3fd06a,#27a34e);
+    color:#08280f;font-weight:bold;
+    font-size:clamp(17px,4.2vmin,23px);padding:12px 42px;cursor:pointer;
+    box-shadow:0 5px 0 #1b7d39;font-family:inherit;
+  }
+  button.play:active{transform:translateY(3px);box-shadow:0 2px 0 #1b7d39;}
+  .hint{font-size:clamp(11px,2.5vmin,12px);opacity:.6;}
+  #overMsg{font-size:clamp(15px,3.6vmin,19px);font-weight:bold;color:var(--gold);}
+  .hidden{display:none !important;}
+  @media (prefers-reduced-motion:reduce){*{animation:none !important;}}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="stage">
+    <canvas id="game"></canvas>
+    <div id="hud">
+      <div class="plaque display">🏏 <span id="score" class="gold">0</span>-<span id="wkts">0</span><small id="oversLabel">0.0 OV</small></div>
+      <div class="plaque display" id="targetPlaque" style="display:none">🎯 <span id="target">0</span><small id="needLabel">TO WIN</small></div>
+      <div class="plaque display">🏆 <span id="best">0</span><small>BEST</small></div>
+      <div id="btns">
+        <button class="iconBtn" id="pauseBtn" aria-label="Pause">⏸</button>
+        <button class="iconBtn" id="sfxBtn" aria-label="Sound">🔊</button>
+        <button class="iconBtn" id="fsBtn" aria-label="Fullscreen">⛶</button>
+      </div>
+    </div>
+
+    <div id="startScreen" class="overlay">
+      <div class="card">
+        <h1 class="display">Super Over</h1>
+        <div class="sub">Flick cricket</div>
+        <p><b>Flick the ball</b> the instant it reaches you — the direction you flick is where it goes.</p>
+        <p>Flick <b>gently</b> to place it along the ground, <b>hard</b> to launch a six. But big shots can be caught — watch the ball's shadow!</p>
+        <p class="hint">A straight ball you miss bowls you. Time it sweetly for FOUR and SIX. Build your innings.</p>
+        <div class="modes">
+          <button class="mode sel" data-mode="knock">🏏 The Knock<small>5 wickets · high score</small></button>
+          <button class="mode" data-mode="chase">🎯 Run Chase<small>5 overs · hit the target</small></button>
+        </div>
+        <button class="play display" id="startBtn">Walk out to bat</button>
+        <p class="hint">Flick / swipe to play · P pause · F fullscreen</p>
+      </div>
+    </div>
+
+    <div id="overScreen" class="overlay hidden">
+      <div class="card">
+        <h1 class="display" id="overTitle">Innings over</h1>
+        <p id="overMsg"></p>
+        <p id="overLine"></p>
+        <button class="play display" id="againBtn">Bat again</button>
+        <p class="hint">Press Enter to replay</p>
+      </div>
+    </div>
+
+    <div id="pauseScreen" class="overlay hidden">
+      <div class="card">
+        <h1 class="display">Drinks break</h1>
+        <p>Take your guard when you're ready.</p>
+        <button class="play display" id="resumeBtn">Resume</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+"use strict";
+
+/* ================= setup ================= */
+const W = 480, H = 854;
+const DPR = Math.min(3, window.devicePixelRatio || 1);
+const canvas = document.getElementById("game");
+canvas.width = W*DPR; canvas.height = H*DPR;
+const ctx = canvas.getContext("2d");
+ctx.scale(DPR, DPR);
+
+const $ = id => document.getElementById(id);
+const scoreEl=$("score"), wktsEl=$("wkts"), oversLabel=$("oversLabel"),
+      bestEl=$("best"), targetPlaque=$("targetPlaque"), targetEl=$("target"), needLabel=$("needLabel"),
+      startScreen=$("startScreen"), overScreen=$("overScreen"), pauseScreen=$("pauseScreen"),
+      overTitle=$("overTitle"), overMsg=$("overMsg"), overLine=$("overLine");
+
+/* field geometry */
+const FCX = W/2, FCY = H*0.46, RX = W*0.455, RY = H*0.40;
+const BAT = {x:FCX, y:FCY - RY*0.58};     // striker (far / top) — TV broadcast view
+const BOWL = {x:FCX, y:FCY + RY*0.60};    // bowler (near / bottom)
+const HIT_Y = BAT.y + 8;                  // where the ball meets the bat (just in front of the striker)
+
+/* ray from batsman to the boundary in screen px, for direction `ang` (screen radians) */
+function boundaryDist(ang){
+  const dx=Math.cos(ang), dy=Math.sin(ang);
+  // solve (BAT + t*dir) on ellipse centred at (FCX,FCY): ((x-FCX)/RX)^2+((y-FCY)/RY)^2=1
+  const ox=(BAT.x-FCX)/RX, oy=(BAT.y-FCY)/RY, ux=dx/RX, uy=dy/RY;
+  const a=ux*ux+uy*uy, b=2*(ox*ux+oy*uy), c=ox*ox+oy*oy-1;
+  const disc=Math.max(0,b*b-4*a*c);
+  return (-b+Math.sqrt(disc))/(2*a);
+}
+/* (theta around field, 0=straight to bowler; +right; norm dist 0..1) -> screen point */
+function fieldPos(theta, dn){
+  const ang = Math.PI/2 + theta;   // theta 0 = straight down the ground (toward bowler / camera)
+  const d = boundaryDist(ang)*dn;
+  return {x:BAT.x+Math.cos(ang)*d, y:BAT.y+Math.sin(ang)*d, ang, bd:boundaryDist(ang)};
+}
+
+/* ================= state ================= */
+function loadBest(){ try{ const s=localStorage.getItem("superOverBest"); if(s) return JSON.parse(s);}catch(e){} return {knock:0, chase:0}; }
+function saveBest(){ try{ localStorage.setItem("superOverBest", JSON.stringify(best)); }catch(e){} }
+let best = loadBest();
+
+let mode="knock";
+let state="menu";              // menu | bowling | flighting(ball-in-play) | between | paused | over
+let score=0, wkts=0, balls=0, target=0, maxWkts=5, maxBalls=Infinity;
+let runsThisBall=0, milestone=0;
+let delivery=null, ball=null, shotBall=null, outcome=null;
+let outcomeText="", outcomeT=0, outcomeBig=false;
+let particles=[], shake=0, flashRing=0;
+let fielders=[], swingT=0, swingDir=0, batLift=0;
+let bowlerAnim=0, crowdJoy=0;
+let lastFlick=null, awaitFlick=false;
+
+const KEEPER_THETA = Math.PI; // behind the batsman
+
+/* ================= AUDIO ================= */
+let audioCtx=null, audioReady=false, sfxOn=true, noiseBuf=null;
+function unlockAudio(){
+  if (audioReady){ if(audioCtx&&audioCtx.state==="suspended")audioCtx.resume(); return; }
+  try{
+    audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+    const len=audioCtx.sampleRate*1.0;
+    noiseBuf=audioCtx.createBuffer(1,len,audioCtx.sampleRate);
+    const d=noiseBuf.getChannelData(0);
+    for(let i=0;i<len;i++) d[i]=Math.random()*2-1;
+    audioReady=true;
+  }catch(e){}
+}
+window.addEventListener("pointerdown",unlockAudio);
+window.addEventListener("keydown",unlockAudio);
+function tone(f1,when,dur,type="sine",vol=0.06,f2){
+  if(!audioReady)return;
+  const o=audioCtx.createOscillator(),g=audioCtx.createGain();
+  o.type=type;o.frequency.setValueAtTime(f1,when);
+  if(f2)o.frequency.exponentialRampToValueAtTime(Math.max(20,f2),when+dur);
+  g.gain.setValueAtTime(0.0001,when);
+  g.gain.linearRampToValueAtTime(vol,when+0.01);
+  g.gain.exponentialRampToValueAtTime(0.0001,when+dur);
+  o.connect(g);g.connect(audioCtx.destination);
+  o.start(when);o.stop(when+dur+0.05);
+}
+function noiseBurst(dur,vol,freq,when){
+  if(!audioReady||!sfxOn)return;
+  const s=audioCtx.createBufferSource();s.buffer=noiseBuf;
+  const f=audioCtx.createBiquadFilter();f.type="lowpass";f.frequency.value=freq;
+  const g=audioCtx.createGain();const t=when||audioCtx.currentTime;
+  g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+  s.connect(f);f.connect(g);g.connect(audioCtx.destination);
+  s.start(t);s.stop(t+dur);
+}
+function sfx(f1,dur,type,vol,f2){ if(sfxOn&&audioReady) tone(f1,audioCtx.currentTime,dur,type,vol,f2); }
+function sfxSeq(notes,type="sine",vol=0.07){ if(!sfxOn||!audioReady)return; let t=audioCtx.currentTime; for(const[f,d]of notes){tone(f,t,d,type,vol);t+=d*0.8;} }
+const NOTE=n=>440*Math.pow(2,n/12);
+const sndBat   = (q)=>{ noiseBurst(.05,.18,2600); sfx(q==='perfect'?900:600,.05,"square",.05,300); };
+const sndBlock = ()=> noiseBurst(.04,.08,1200);
+const sndBowled= ()=>{ noiseBurst(.12,.2,800); sfx(150,.18,"square",.1,60); };
+const sndCheer = (big)=>{ const t=audioCtx?audioCtx.currentTime:0; noiseBurst(big?.7:.45, big?.16:.1, 1800, t); if(big) sfxSeq([[NOTE(7),.12],[NOTE(12),.12],[NOTE(16),.2]],"triangle",.06); };
+const sndAww   = ()=>{ noiseBurst(.5,.1,700); sfxSeq([[NOTE(2),.16],[NOTE(-3),.3]],"sawtooth",.05); };
+const sndBowl  = ()=> sfx(420,.07,"sine",.03,260);
+const sndMilestone=()=> sfxSeq([[NOTE(0),.12],[NOTE(4),.12],[NOTE(7),.12],[NOTE(12),.26]],"triangle",.09);
+const sndWin   = ()=> sfxSeq([[NOTE(0),.12],[NOTE(7),.12],[NOTE(12),.12],[NOTE(16),.12],[NOTE(19),.3]],"triangle",.1);
+const sndClick = ()=> sfx(620,.05,"sine",.05);
+$("sfxBtn").addEventListener("click",e=>{sfxOn=!sfxOn;e.currentTarget.classList.toggle("off",!sfxOn);e.currentTarget.textContent=sfxOn?"🔊":"🔇";});
+
+/* ================= field set-up ================= */
+const FIELD_SPREAD = [ /* deep ring covers the main hitting arcs; gaps remain for placement */
+  {th:-0.32, dn:0.93}, {th:0.32, dn:0.93},   // deep straight-ish (long-on/off)
+  {th:-0.78, dn:0.9},  {th:0.78, dn:0.9},     // deep midwicket / cover
+  {th:-1.3, dn:0.82},  {th:1.3, dn:0.82},     // deep square
+  {th:-2.0, dn:0.72},  {th:2.0, dn:0.72},     // backward square
+  {th:0.0, dn:0.96}, {th:2.7, dn:0.6}
+];
+let recentShots=[];   // thetas of the batter's recent attacking shots — the captain reads this
+function circMean(arr){
+  let sx=0, sy=0; for(const a of arr){ sx+=Math.cos(a); sy+=Math.sin(a); }
+  return Math.atan2(sy, sx);
+}
+function setField(){
+  fielders = FIELD_SPREAD.map(f => ({th:f.th, dn:f.dn}));
+  const over = Math.floor(balls/6);
+  // adaptive: if the batter keeps targeting one area, the captain posts catchers there
+  if (recentShots.length>=2){
+    const hot = circMean(recentShots);
+    // strength of the read grows the more consistently they hit the same zone
+    const spread = recentShots.reduce((s,a)=>s+Math.abs(angDiff(a,hot)),0)/recentShots.length;
+    const conviction = Math.max(0, 1 - spread/0.9);     // 1 = very predictable
+    // pull the two fielders nearest the hot zone right onto it, deep
+    const sorted = fielders.slice().sort((p,q)=>Math.abs(angDiff(p.th,hot))-Math.abs(angDiff(q.th,hot)));
+    for (let i=0;i<2 && i<sorted.length;i++){
+      const f=sorted[i];
+      f.th = f.th + angDiff(hot,f.th)*(0.55*conviction) + (i?0.3:-0.3)*0.5;  // straddle the zone
+      f.dn = Math.min(0.95, 0.84 + 0.04*i);
+    }
+  }
+  // as overs progress, the ring squeezes in a touch
+  const tighten = Math.min(over*0.018, 0.16);
+  for (const f of fielders) f.dn = Math.max(0.5, f.dn - tighten*(Math.random()<0.5?1:0.3));
+  // light jitter so it isn't pixel-identical each ball
+  for (const f of fielders){ f.th += (Math.random()-0.5)*0.14; f.dn += (Math.random()-0.5)*0.05; }
+}
+function recordShot(theta){ recentShots.push(theta); if(recentShots.length>5) recentShots.shift(); }
+
+/* ================= delivery generation ================= */
+function diff(){ return Math.min(1, balls/60); }   // 0..1 across ~10 overs
+function newDelivery(){
+  const d = diff();
+  const spin = Math.random() < 0.3 + d*0.15;
+  // more random spread in travel time so you must read EACH ball, not groove a rhythm
+  const travel = spin ? (820 - d*150 + Math.random()*230) : (560 - d*150 + Math.random()*210); // ms
+  const line = (Math.random()*2-1) * (0.5 + d*0.3);   // -1..1 across the pitch; near 0 = at stumps
+  const onStumps = Math.abs(line) < 0.22;
+  // length: 0 full ... 1 short; affects ideal contact & best shot
+  const length = Math.random();
+  // lateral movement (swing/spin) — ball drifts as it travels
+  const move = (spin ? (Math.random()*2-1)*(0.6+d*0.5) : (Math.random()*2-1)*(0.3+d*0.6));
+  // ideal contact time (ms from release) and timing windows.
+  // perfect (the only window that clears the rope) is a tight sweet-spot, not a gimme.
+  const idealT = travel;
+  const perfect = 58 - d*18, good = 150 - d*42, hit = 240 - d*55;
+  delivery = {spin, travel, line, onStumps, length, move, idealT,
+              win:{perfect, good, hit}, released:false};
+  return delivery;
+}
+
+/* ================= flow ================= */
+function startGame(){
+  unlockAudio();
+  score=0; wkts=0; balls=0; milestone=0; particles=[]; outcomeText=""; recentShots=[];
+  if (mode==="chase"){
+    maxWkts=10; maxBalls=30;
+    target = 55 + Math.floor(Math.random()*46);   // 55..100
+    targetPlaque.style.display=""; targetEl.textContent=target; needLabel.textContent="TO WIN";
+  } else {
+    maxWkts=5; maxBalls=Infinity; target=0;
+    targetPlaque.style.display="none";
+  }
+  bestEl.textContent = best[mode];
+  startScreen.classList.add("hidden"); overScreen.classList.add("hidden"); pauseScreen.classList.add("hidden");
+  state="between";
+  nextBall(900);
+  updateHUD();
+}
+function updateHUD(){
+  scoreEl.textContent=score; wktsEl.textContent=wkts;
+  const ov=Math.floor(balls/6), bl=balls%6;
+  oversLabel.textContent = ov+"."+bl+(mode==="chase"?"/5":"")+" OV";
+  if (mode==="chase"){ const need=Math.max(0,target+1-score); targetEl.textContent=need; needLabel.textContent=need<=0?"WON":"TO WIN ("+(maxBalls-balls)+"b)"; }
+}
+let nextBallTimer=0;
+function nextBall(delay){
+  state="between";
+  nextBallTimer = (delay||500)/1000;
+}
+function bowl(){
+  newDelivery(); setField();
+  ball = {t:0, x:BOWL.x, y:BOWL.y, released:true};
+  state="bowling"; awaitFlick=true; lastFlick=null;
+  batLift=0.0001;
+  bowlerAnim=1;
+  sndBowl();
+}
+function endInnings(won){
+  state="over";
+  const isBest = score>best[mode];
+  if (mode==="knock"){ best[mode]=Math.max(best[mode],score); }
+  else { if (won) best[mode]=Math.max(best[mode],score); }
+  saveBest(); bestEl.textContent=best[mode];
+  if (mode==="chase"){
+    if (won){ overTitle.textContent="WON IT! 🏆"; overMsg.textContent="Chase complete with "+(maxBalls-balls)+" balls to spare!"; sndWin(); confettiBurst(); }
+    else { overTitle.textContent="So close…"; overMsg.textContent= wkts>=maxWkts ? "All out — "+ (target+1-score) +" short." : "Ran out of overs — "+Math.max(0,target+1-score)+" short."; sndAww(); }
+    overLine.textContent = score+" for "+wkts+"  ·  target was "+(target+1);
+  } else {
+    overTitle.textContent = score>=100?"Magnificent ton! 🏏":score>=50?"Cracking fifty!":"Innings over";
+    overMsg.textContent = isBest && score>0 ? "🎉 New best score! 🎉" : "You made "+score+".";
+    overLine.textContent = score+" runs from "+balls+" balls";
+    if (isBest && score>0) sndWin(); else sndAww();
+  }
+  setTimeout(()=>overScreen.classList.remove("hidden"), 600);
+}
+function togglePause(){
+  if(state==="paused"){ state=resumeState; pauseScreen.classList.add("hidden"); }
+  else if(state!=="menu"&&state!=="over"){ resumeState=state; state="paused"; pauseScreen.classList.remove("hidden"); }
+}
+let resumeState="between";
+$("startBtn").addEventListener("click",()=>{sndClick();startGame();});
+$("againBtn").addEventListener("click",()=>{sndClick();startGame();});
+$("resumeBtn").addEventListener("click",()=>{sndClick();togglePause();});
+$("pauseBtn").addEventListener("click",()=>{sndClick();togglePause();});
+document.querySelectorAll("button.mode").forEach(b=>b.addEventListener("click",()=>{
+  sndClick(); mode=b.dataset.mode;
+  document.querySelectorAll("button.mode").forEach(x=>x.classList.toggle("sel",x===b));
+  bestEl.textContent=best[mode];
+}));
+const wrap=$("wrap");
+$("fsBtn").addEventListener("click",()=>{ sndClick();
+  if(!document.fullscreenElement){(wrap.requestFullscreen||wrap.webkitRequestFullscreen||function(){}).call(wrap);}
+  else{(document.exitFullscreen||document.webkitExitFullscreen||function(){}).call(document);}
+});
+document.addEventListener("fullscreenchange",()=>{$("fsBtn").textContent=document.fullscreenElement?"🗗":"⛶";});
+document.addEventListener("visibilitychange",()=>{if(document.hidden&&(state==="bowling"||state==="between"))togglePause();});
+window.addEventListener("keydown",e=>{
+  const k=e.key.toLowerCase();
+  if(k==="p"||k===" "){ if(state!=="menu"&&state!=="over") togglePause(); }
+  if(k==="f")$("fsBtn").click();
+  if(k==="enter"){ if(state==="menu"||state==="over") startGame(); }
+});
+
+/* ================= input: the flick ================= */
+let pStart=null;
+canvas.addEventListener("pointerdown",e=>{
+  e.preventDefault();
+  if(state!=="bowling"||!awaitFlick)return;
+  const r=canvas.getBoundingClientRect();
+  pStart={x:(e.clientX-r.left)*(W/r.width), y:(e.clientY-r.top)*(H/r.height), t:ball.t};
+});
+canvas.addEventListener("pointerup",e=>{
+  if(!pStart||state!=="bowling"||!awaitFlick){pStart=null;return;}
+  const r=canvas.getBoundingClientRect();
+  const ex=(e.clientX-r.left)*(W/r.width), ey=(e.clientY-r.top)*(H/r.height);
+  const dx=ex-pStart.x, dy=ey-pStart.y;
+  const len=Math.hypot(dx,dy);
+  playShot(dx,dy,len,ball.t);
+  pStart=null;
+});
+
+function playShot(dx,dy,len,releaseT){
+  awaitFlick=false;
+  // a tiny flick = a defensive tap straight down the ground
+  if (len<14){ dx=0; dy=40; len=40; }
+  const theta = Math.atan2(dy, dx) - Math.PI/2;   // ball goes where you flick; 0 = straight down the ground
+  const power = Math.min(1, len/210);
+  const loft  = Math.max(0, Math.min(1, (power-0.42)*1.9));   // gentle=ground, hard=lofted
+  const flick = {theta, power, loft};
+  outcome = resolveShot(delivery, flick, releaseT, fielders, Math.random);
+  if (power > 0.55) recordShot(theta);   // the captain only reads your real attacking shots
+  swingDir = Math.max(-1,Math.min(1, dx/80));
+  swingT = 0.34;
+  applyOutcome(outcome, theta, power, loft);
+}
+
+/* ================= shot resolution (the heart of it) ================= */
+function angDiff(a,b){ let d=a-b; while(d>Math.PI)d-=2*Math.PI; while(d<-Math.PI)d+=2*Math.PI; return d; }
+function resolveShot(del, flick, releaseT, field, rng){
+  // no flick at all = the batsman left/missed the ball
+  if (!flick){
+    if (del.onStumps) return {type:"out", how:"bowled", q:"miss", runs:0};
+    if (rng() < 0.12 + 0.18*Math.abs(del.move)) return {type:"out", how:"caught behind", q:"miss", runs:0};
+    return {type:"dot", q:"miss", runs:0, desc:"left it"};
+  }
+  const err = releaseT - del.idealT;
+  const ae = Math.abs(err);
+  let q;
+  if (ae < del.win.perfect) q="perfect";
+  else if (ae < del.win.good) q="good";
+  else if (ae < del.win.hit) q="edge";
+  else q="miss";
+
+  if (q==="miss"){
+    if (del.onStumps) return {type:"out", how:"bowled", q, runs:0};
+    // beaten outside off — chance of a thin edge to the keeper
+    if (rng() < 0.18 + 0.2*Math.abs(del.move)) return {type:"out", how:"caught behind", q, runs:0};
+    return {type:"dot", q, runs:0, desc: err<0?"too early":"too late"};
+  }
+
+  // contact quality scales power & adds error
+  const qp = q==="perfect"?1 : q==="good"?0.80 : 0.48;
+  let power = Math.min(1, flick.power*qp + (q==="perfect"?0.03:0));
+  let theta = flick.theta + (q==="edge" ? (rng()-0.5)*1.4 : q==="good" ? (rng()-0.5)*0.3 : (rng()-0.5)*0.1);
+  let loft = flick.loft;
+  // mis-hits balloon: an edge with intended ground shot can pop up
+  if (q==="edge"){ loft = Math.min(1, loft + 0.35 + rng()*0.4); power *= 0.7; }
+  // length influence: short balls sit up (easier loft), yorkers (full+fast) cramp power
+  if (del.length < 0.18 && !del.spin) power *= 0.78;        // yorker
+  if (del.length > 0.75) loft = Math.min(1, loft + 0.12);   // short, sits up
+
+  const ang = Math.PI/2 + theta;
+  const bd = boundaryDist(ang);
+
+  if (loft > 0.5){
+    const carry = power * 1.06;
+    // is a deep boundary rider standing in the firing line? (only a near-dead-straight hit is dangerous)
+    let lineF=null, bestA=0.18;
+    for (const f of field){
+      const ad=Math.abs(angDiff(theta, f.th));
+      if (f.dn>0.78 && ad<bestA){ bestA=ad; lineF=f; }
+    }
+    if (carry >= 1.0){
+      if (lineF){
+        const catchProb = 0.5*(1 - bestA/0.18);
+        if (rng() < catchProb) return {type:"out", how:"caught", q, runs:0, theta, loft, carry, by:lineF, boundary:true};
+      }
+      return {type:"six", q, runs:6, theta, loft, carry};
+    }
+    // short of the rope — caught if a fielder is under the drop
+    for (const f of field){
+      if (Math.abs(angDiff(theta, f.th)) < 0.24 && Math.abs(f.dn - carry) < 0.17)
+        return {type:"out", how:"caught", q, runs:0, theta, loft, carry, by:f};
+    }
+    // cleared the infield into a gap but didn't clear the rope — run hard
+    const runs = carry>0.85?2:1;
+    return {type:"run", q, runs, theta, loft, carry};
+  } else {
+    // along the ground
+    const reach = power * 1.12;
+    // intercepted by an infielder roughly in the ball's path?
+    let stop=null;
+    for (const f of field){
+      if (Math.abs(angDiff(theta, f.th)) < 0.20 && f.dn < reach){
+        if (!stop || f.dn < stop.dn) stop = f;
+      }
+    }
+    if (!stop && reach >= 1.0) return {type:"four", q, runs:4, theta, loft:0, carry:reach};
+    if (stop){
+      const runs = stop.dn>0.7?2 : stop.dn>0.45?1 : (rng()<0.4?1:0);
+      return {type:"run", q, runs, theta, loft:0, carry:stop.dn, by:stop};
+    }
+    // through to the rope-ish but short
+    const runs = reach>0.8?3 : reach>0.55?2 : 1;
+    return {type:"run", q, runs, theta, loft:0, carry:reach};
+  }
+}
+
+/* ================= apply an outcome ================= */
+function applyOutcome(o, theta, power, loft){
+  state="flighting";
+  runsThisBall = o.runs||0;
+  // launch the struck ball for animation
+  const ang=Math.PI/2+theta, bd=boundaryDist(ang);
+  const target = (o.type==="six")?1.12:(o.type==="four")?1.0:(o.carry||0.6);
+  shotBall = {th:theta, ang, prog:0, dur:(o.type==="six"||o.type==="four")?0.62:0.5,
+              dist:bd*Math.min(target,1.15), loft:(o.loft||0)*(o.type==="six"?1:0.8),
+              caught:o.type==="out"&&(o.how==="caught"||o.how==="caught behind"),
+              by:o.by, six:o.type==="six", four:o.type==="four", done:false};
+  sndBat(o.q);
+  if (o.q==="edge") {} // muted
+}
+function settleBall(o){
+  balls++;
+  if (o.type==="out"){
+    wkts++;
+    showText(o.how==="bowled"?"BOWLED!":o.how==="caught behind"?"CAUGHT BEHIND!":"CAUGHT!", true, "#ff6a6a");
+    if (o.how==="bowled"){ sndBowled(); knockStumps(); } else sndAww();
+    shake=Math.max(shake,8);
+  } else {
+    score += o.runs;
+    if (o.type==="six"){ showText("SIX! 🎉", true, "#ffd24d"); sndCheer(true); confettiBurst(); shake=Math.max(shake,6); crowdJoy=1; }
+    else if (o.type==="four"){ showText("FOUR!", true, "#9dff8a"); sndCheer(false); crowdJoy=0.8; }
+    else if (o.runs>0){ showText(o.runs+(o.runs===1?" run":" runs"), false, "#fff"); }
+    else { showText(o.desc||"dot ball", false, "#cfd6e6"); sndBlock(); }
+    // milestones
+    if (mode==="knock"){
+      const m=Math.floor(score/50);
+      if (m>milestone){ milestone=m; showText(score>=100?"HUNDRED! 🏏":"FIFTY!", true, "#ffd24d"); sndMilestone(); confettiBurst(); }
+    }
+  }
+  updateHUD();
+  // end conditions
+  if (mode==="chase"){
+    if (score>target){ endInnings(true); return; }
+    if (wkts>=maxWkts || balls>=maxBalls){ endInnings(false); return; }
+  } else {
+    if (wkts>=maxWkts){ endInnings(false); return; }
+  }
+  nextBall(o.type==="out"?2200:1700);
+}
+function showText(t,big,col){ outcomeText=t; outcomeBig=big; outcomeT=1.1; outcomeCol=col||"#fff"; }
+let outcomeCol="#fff";
+
+/* ================= particles ================= */
+function confettiBurst(){
+  const cols=["#ffd24d","#9dff8a","#6fd6ff","#ff7aa8","#fff"];
+  for(let i=0;i<30;i++){ const a=Math.random()*Math.PI*2,sp=2+Math.random()*4;
+    particles.push({kind:"confetti",x:W/2,y:H*0.4,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp-2,rot:Math.random()*6,vr:(Math.random()-.5)*.5,col:cols[i%5],life:1.6}); }
+}
+function knockStumps(){
+  for(let i=0;i<5;i++) particles.push({kind:"splinter",x:BAT.x+(Math.random()-.5)*10,y:HIT_Y+4,vx:(Math.random()-.5)*3,vy:-Math.random()*3-1,rot:Math.random()*6,vr:.3,life:.8});
+}
+
+/* ================= update ================= */
+function update(dt){
+  if (swingT>0) swingT-=dt;
+  if (batLift>0 && batLift<1 && state==="bowling") batLift=Math.min(1,batLift+dt*4);
+  if (bowlerAnim>0) bowlerAnim=Math.max(0,bowlerAnim-dt*1.6);
+  if (crowdJoy>0) crowdJoy=Math.max(0,crowdJoy-dt*0.7);
+  if (outcomeT>0) outcomeT-=dt;
+  if (shake>0){ shake*=0.86; if(shake<0.3)shake=0; }
+  if (flashRing>0) flashRing-=dt*2;
+
+  if (state==="between"){
+    nextBallTimer-=dt;
+    if (nextBallTimer<=0) bowl();
+  }
+  else if (state==="bowling"){
+    ball.t += dt*1000;
+    const p = ball.t/delivery.travel;
+    // ball travels bowler->batsman with lateral move (swing/spin) curving in late
+    const lat = delivery.line + delivery.move*p*p;
+    ball.x = BOWL.x + lat*(RX*0.16);
+    ball.y = BOWL.y + (HIT_Y-BOWL.y)*p;
+    ball.scale = 1.05 - p*0.42;   // shrinks gently as it travels away to the far striker
+    if (ball.t > delivery.travel + delivery.win.hit){
+      // ball passed the bat with no shot played
+      awaitFlick=false;
+      outcome = resolveShot(delivery, null, ball.t, fielders, Math.random);
+      // no swing animation; resolve straight to settle
+      state="flighting";
+      shotBall=null;
+      settleAfter = 0.25;
+    }
+  }
+  else if (state==="flighting"){
+    if (shotBall && !shotBall.done){
+      shotBall.prog += dt/shotBall.dur;
+      if (shotBall.prog>=1){ shotBall.prog=1; shotBall.done=true; settleAfter=0.15; }
+    } else {
+      settleAfter -= dt;
+      if (settleAfter<=0){ const o=outcome; outcome=null; shotBall=null; settleBall(o); }
+    }
+  }
+
+  // particles
+  particles=particles.filter(p=>p.life>0);
+  for(const p of particles){
+    p.life-=dt; p.x+=p.vx; p.y+=p.vy;
+    if(p.kind==="confetti"){p.vy+=0.12;p.rot+=p.vr;}
+    else if(p.kind==="splinter"){p.vy+=0.2;p.rot+=p.vr;}
+  }
+}
+let settleAfter=0;
+
+/* ================= drawing ================= */
+const bgCanvas=document.createElement("canvas");
+bgCanvas.width=W*DPR; bgCanvas.height=H*DPR;
+(function paintBg(){
+  const g=bgCanvas.getContext("2d"); g.scale(DPR,DPR);
+  // dark night beyond the stadium roof
+  g.fillStyle="#0c1730"; g.fillRect(0,0,W,H);
+
+  // ---- the stadium bowl: lighter, structured tiers so it reads as packed seating ----
+  const tiers=[
+    {rx:RX*1.62, ry:RY*1.58, c:"#39456a"},
+    {rx:RX*1.46, ry:RY*1.44, c:"#41507a"},
+    {rx:RX*1.30, ry:RY*1.30, c:"#4a5c8c"},
+    {rx:RX*1.16, ry:RY*1.18, c:"#54689c"}
+  ];
+  for(const t of tiers){ g.fillStyle=t.c; g.beginPath(); g.ellipse(FCX,FCY,t.rx,t.ry,0,0,Math.PI*2); g.fill(); }
+  // tier divider rings (the fronts of each seating deck)
+  for(const rr of [1.18,1.32,1.48]){
+    g.strokeStyle="rgba(20,28,50,0.5)"; g.lineWidth=3;
+    g.beginPath(); g.ellipse(FCX,FCY,RX*rr,RY*rr,0,0,Math.PI*2); g.stroke();
+  }
+  // radial aisles / vomitories — kills the "starfield" feel by giving structure
+  for(let i=0;i<28;i++){
+    const a=i/28*Math.PI*2;
+    g.strokeStyle="rgba(20,28,50,0.28)"; g.lineWidth=2;
+    g.beginPath();
+    g.moveTo(FCX+Math.cos(a)*RX*1.07, FCY+Math.sin(a)*RY*1.08);
+    g.lineTo(FCX+Math.cos(a)*RX*1.6,  FCY+Math.sin(a)*RY*1.56);
+    g.stroke();
+  }
+
+  // ---- dense packed crowd, contained in the seating annulus ----
+  const inR=1.075, outR=1.58;
+  for(let i=0;i<5200;i++){
+    const a=Math.random()*Math.PI*2;
+    const f=Math.pow(Math.random(),0.7);
+    const rxf=inR+(outR-inR)*f;
+    const x=FCX+Math.cos(a)*RX*rxf, y=FCY+Math.sin(a)*RY*rxf;
+    if(x<1||x>W-1||y<1||y>H-1) continue;
+    const lum = 55+Math.random()*30;
+    g.fillStyle = Math.random()<0.78
+      ? `hsl(${Math.floor(Math.random()*360)} ${28+Math.random()*32}% ${lum}%)`
+      : "rgba(20,26,44,0.7)";                       // dark gaps between heads = packed look
+    g.globalAlpha=0.7+Math.random()*0.3;
+    g.beginPath(); g.arc(x,y,0.8+Math.random()*1.3,0,Math.PI*2); g.fill();
+  }
+  g.globalAlpha=1;
+
+  // ---- floodlights ----
+  for(const [fx,fy] of [[FCX-RX*1.3,FCY-RY*1.15],[FCX+RX*1.3,FCY-RY*1.15],[FCX-RX*1.3,FCY+RY*1.15],[FCX+RX*1.3,FCY+RY*1.15]]){
+    const gl=g.createRadialGradient(fx,fy,2,fx,fy,160);
+    gl.addColorStop(0,"rgba(255,250,225,0.32)"); gl.addColorStop(1,"rgba(255,250,225,0)");
+    g.fillStyle=gl; g.beginPath(); g.arc(fx,fy,160,0,Math.PI*2); g.fill();
+    g.fillStyle="#cdd4e4"; g.fillRect(fx-2,fy-2,4,26);
+    g.fillStyle="#fff"; roundRectP(g,fx-13,fy-13,26,11,3); g.fill();
+  }
+
+  // ---- outfield ----
+  g.save(); g.beginPath(); g.ellipse(FCX,FCY,RX,RY,0,0,Math.PI*2); g.clip();
+  const grad=g.createLinearGradient(0,FCY-RY,0,FCY+RY);
+  grad.addColorStop(0,"#34ab55"); grad.addColorStop(1,"#288a47");
+  g.fillStyle=grad; g.fillRect(0,0,W,H);
+  for(let r=1;r<=14;r++){
+    g.strokeStyle = r%2===0?"rgba(255,255,255,0.055)":"rgba(0,0,0,0.05)";
+    g.lineWidth=RX/14+1;
+    g.beginPath(); g.ellipse(FCX,FCY, r*RX/14, r*RY/14,0,0,Math.PI*2); g.stroke();
+  }
+  g.restore();
+
+  // ---- advertising-board ring + concrete walkway just outside the rope (the key "cricket ground" cue) ----
+  g.save(); g.translate(FCX,FCY);
+  g.lineWidth=10; g.strokeStyle="#cfd6e0";            // walkway
+  g.beginPath(); g.ellipse(0,0,RX*1.05,RY*1.05,0,0,Math.PI*2); g.stroke();
+  const boardCols=["#e23b4f","#2f6bd6","#ffd24d","#27a34e","#ff7a1a","#ffffff"];
+  const segs=40;
+  for(let i=0;i<segs;i++){
+    const a0=i/segs*Math.PI*2, a1=(i+1)/segs*Math.PI*2;
+    g.strokeStyle=boardCols[i%boardCols.length]; g.lineWidth=7;
+    g.beginPath(); g.ellipse(0,0,RX*1.0,RY*1.0,0,a0+0.01,a1-0.01); g.stroke();
+  }
+  g.restore();
+  // boundary rope (white, on the field side of the boards)
+  g.strokeStyle="#f4f6ee"; g.lineWidth=4;
+  g.beginPath(); g.ellipse(FCX,FCY,RX-3,RY-3,0,0,Math.PI*2); g.stroke();
+
+  // pitch (wider at the near/bowler end for perspective) with creases at both ends
+  g.save(); g.translate(FCX,FCY);
+  const pTop=(BAT.y-FCY)-16, pBot=(BOWL.y-FCY)+16, pw=44;
+  g.fillStyle="#c7a877"; g.beginPath();
+  g.moveTo(-pw*0.6,pTop); g.lineTo(pw*0.6,pTop); g.lineTo(pw*0.82,pBot); g.lineTo(-pw*0.82,pBot); g.closePath(); g.fill();
+  g.strokeStyle="rgba(120,90,50,0.5)"; g.lineWidth=1; g.stroke();
+  g.strokeStyle="rgba(255,255,255,0.85)"; g.lineWidth=2;
+  g.beginPath(); g.moveTo(-pw*0.55,pTop+22); g.lineTo(pw*0.55,pTop+22); g.stroke();   // striker crease
+  g.beginPath(); g.moveTo(-pw*0.75,pBot-22); g.lineTo(pw*0.75,pBot-22); g.stroke();   // bowler crease
+  g.restore();
+})();
+function roundRectP(g,x,y,w,h,r){g.beginPath();g.moveTo(x+r,y);g.arcTo(x+w,y,x+w,y+h,r);g.arcTo(x+w,y+h,x,y+h,r);g.arcTo(x,y+h,x,y,r);g.arcTo(x,y,x+w,y,r);g.closePath();}
+
+function roundRect(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
+
+function drawStumps(x,y,s,knocked){
+  ctx.save(); ctx.translate(x,y);
+  ctx.strokeStyle="#efe6d0"; ctx.lineWidth=2.4*s; ctx.lineCap="round";
+  const sp=4*s;
+  for(let i=-1;i<=1;i++){
+    ctx.save(); if(knocked&&i!==0)ctx.rotate(i*0.5);
+    ctx.beginPath(); ctx.moveTo(i*sp,0); ctx.lineTo(i*sp,-16*s); ctx.stroke(); ctx.restore();
+  }
+  if(!knocked){ ctx.lineWidth=1.6*s; ctx.beginPath(); ctx.moveTo(-sp-1,-16*s); ctx.lineTo(sp+1,-16*s); ctx.stroke(); }
+  ctx.restore();
+}
+function drawBatsman(now){
+  const x=BAT.x, y=BAT.y;
+  // shadow
+  ctx.fillStyle="rgba(0,0,0,0.28)"; ctx.beginPath(); ctx.ellipse(x,y+7,14,4,0,0,Math.PI*2); ctx.fill();
+  ctx.save(); ctx.translate(x,y);
+  // pads/legs (front)
+  ctx.fillStyle="#eef1e6"; roundRect(-8,-16,6,18,3); ctx.fill(); roundRect(2,-16,6,18,3); ctx.fill();
+  ctx.strokeStyle="#c8ccbe"; ctx.lineWidth=1; ctx.stroke();
+  // shirt (front)
+  ctx.fillStyle="#2f6bd6"; roundRect(-10,-34,20,20,6); ctx.fill();
+  ctx.fillStyle="rgba(255,255,255,0.14)"; roundRect(-10,-34,20,7,6); ctx.fill();
+  // helmet facing us
+  ctx.fillStyle="#1f2a44"; ctx.beginPath(); ctx.arc(0,-40,8,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle="#33415f"; ctx.beginPath(); ctx.arc(0,-40,8,-0.5,Math.PI+0.5); ctx.fill();
+  ctx.fillStyle="#cdd6e4"; ctx.fillRect(-6,-41,12,2.4);   // grille bar
+  // bat: blade reaches down toward the incoming ball; swings across on a shot
+  let batAng;
+  if (swingT>0){ const p=1-swingT/0.34; batAng = swingDir>=0 ? (-1.0+p*2.3) : (1.0-p*2.3); }
+  else { batAng = -0.4 - batLift*0.4 + Math.sin(now/400)*0.05; }
+  ctx.save(); ctx.translate(-1,-20); ctx.rotate(batAng);
+  ctx.strokeStyle="#caa26a"; ctx.lineWidth=3; ctx.lineCap="round";
+  ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(0,-9); ctx.stroke();      // handle (up into the hands)
+  ctx.fillStyle="#d8b67e"; roundRect(-3.5,0,7,22,3); ctx.fill();          // blade pointing down
+  ctx.strokeStyle="#a07d44"; ctx.lineWidth=1; ctx.stroke();
+  ctx.restore();
+  ctx.restore();
+}
+function drawBowler(now){
+  const x=BOWL.x, y=BOWL.y;
+  // near (bowler's) stumps — big, in the foreground
+  drawStumps(x, y+16, 1.25, false);
+  ctx.fillStyle="rgba(0,0,0,0.28)"; ctx.beginPath(); ctx.ellipse(x,y+5,11,4,0,0,Math.PI*2); ctx.fill();
+  ctx.save(); ctx.translate(x,y);
+  const lunge = bowlerAnim>0 ? (1-bowlerAnim)*7 : 0;
+  // body (back view, running away up the pitch)
+  ctx.fillStyle="#d64b3f"; roundRect(-9,-26-lunge,18,20,6); ctx.fill();
+  ctx.fillStyle="rgba(255,255,255,0.12)"; roundRect(-9,-26-lunge,18,7,6); ctx.fill();
+  ctx.fillStyle="#1f2a44"; ctx.beginPath(); ctx.arc(0,-30-lunge,6,0,Math.PI*2); ctx.fill();  // head
+  // bowling arm wheels over the top during delivery
+  ctx.strokeStyle="#eebca0"; ctx.lineWidth=2.8; ctx.lineCap="round";
+  const armA = bowlerAnim>0 ? (-Math.PI/2 - (1-bowlerAnim)*Math.PI*0.95) : (-Math.PI/2+0.3);
+  ctx.beginPath(); ctx.moveTo(0,-22-lunge); ctx.lineTo(Math.cos(armA)*10, -22-lunge+Math.sin(armA)*10); ctx.stroke();
+  ctx.restore();
+}
+function drawField(now){
+  // where is the ball heading? used so the catcher runs under it
+  let landX=null, landY=null;
+  if (shotBall){ landX = BAT.x+Math.cos(shotBall.ang)*shotBall.dist; landY = BAT.y+Math.sin(shotBall.ang)*shotBall.dist; }
+  for(const f of fielders){
+    const p=fieldPos(f.th,f.dn);
+    const s=0.7+(1-f.dn)*0.4;
+    let dx=0, dy=0, lean=0;
+    // the catcher sprints toward the landing spot as the ball drops
+    if(shotBall && shotBall.caught && shotBall.by===f && landX!=null){
+      const run=Math.min(1, shotBall.prog*1.15);
+      dx=(landX-p.x)*run; dy=(landY-p.y)*run;
+      if(shotBall.prog>0.65) lean=Math.sin(now/50)*2.5;   // reaching for it
+    }
+    ctx.fillStyle="rgba(0,0,0,0.22)"; ctx.beginPath(); ctx.ellipse(p.x+dx,p.y+dy+5*s,7*s,2.5*s,0,0,Math.PI*2); ctx.fill();
+    ctx.save(); ctx.translate(p.x+dx+lean,p.y+dy);
+    ctx.fillStyle="#e6e9df"; roundRect(-5*s,-16*s,10*s,12*s,4*s); ctx.fill();   // whites
+    ctx.fillStyle="#1f2a44"; ctx.beginPath(); ctx.arc(0,-20*s,4*s,0,Math.PI*2); ctx.fill();
+    ctx.restore();
+  }
+  // keeper behind the batsman
+  const kp=fieldPos(KEEPER_THETA,0.2);
+  ctx.fillStyle="rgba(0,0,0,0.22)"; ctx.beginPath(); ctx.ellipse(kp.x,kp.y+4,7,2.5,0,0,Math.PI*2); ctx.fill();
+  ctx.save(); ctx.translate(kp.x,kp.y);
+  ctx.fillStyle="#e6e9df"; roundRect(-5,-15,10,12,4); ctx.fill();
+  ctx.fillStyle="#1f2a44"; ctx.beginPath(); ctx.arc(0,-19,4,0,Math.PI*2); ctx.fill();
+  ctx.restore();
+}
+function drawBall(now){
+  if (state==="bowling" && ball){
+    const s=ball.scale;
+    // trail
+    ctx.strokeStyle="rgba(255,255,255,0.25)"; ctx.lineWidth=2*s;
+    ctx.beginPath(); ctx.moveTo(ball.x,ball.y-10*s); ctx.lineTo(ball.x,ball.y); ctx.stroke();
+    ctx.fillStyle="#d12f2f"; ctx.beginPath(); ctx.arc(ball.x,ball.y,4.5*s,0,Math.PI*2); ctx.fill();
+    ctx.strokeStyle="rgba(255,255,255,0.8)"; ctx.lineWidth=0.8*s;
+    ctx.beginPath(); ctx.arc(ball.x,ball.y,4.5*s,-0.6,0.6); ctx.stroke();
+    ctx.fillStyle="rgba(255,255,255,0.5)"; ctx.beginPath(); ctx.arc(ball.x-1.5*s,ball.y-1.5*s,1.2*s,0,Math.PI*2); ctx.fill();
+  }
+  if (state==="flighting" && shotBall){
+    const sb=shotBall, pr=sb.prog;
+    const d=sb.dist*pr;
+    const gx=BAT.x+Math.cos(sb.ang)*d, gy=BAT.y+Math.sin(sb.ang)*d;
+    const h = sb.loft>0 ? Math.sin(pr*Math.PI)*sb.loft*120 : 0;
+    // ground shadow (key for reading catches)
+    ctx.fillStyle="rgba(0,0,0,0.3)"; ctx.beginPath(); ctx.ellipse(gx,gy,5,2.4,0,0,Math.PI*2); ctx.fill();
+    // motion trail
+    ctx.strokeStyle="rgba(255,255,255,0.3)"; ctx.lineWidth=2;
+    const px=BAT.x+Math.cos(sb.ang)*sb.dist*Math.max(0,pr-0.08);
+    const py=BAT.y+Math.sin(sb.ang)*sb.dist*Math.max(0,pr-0.08) - (sb.loft>0?Math.sin(Math.max(0,pr-0.08)*Math.PI)*sb.loft*120:0);
+    ctx.beginPath(); ctx.moveTo(px,py); ctx.lineTo(gx,gy-h); ctx.stroke();
+    ctx.fillStyle="#d12f2f"; ctx.beginPath(); ctx.arc(gx,gy-h,5,0,Math.PI*2); ctx.fill();
+    ctx.strokeStyle="rgba(255,255,255,0.8)"; ctx.lineWidth=1; ctx.beginPath(); ctx.arc(gx,gy-h,5,-0.6,0.6); ctx.stroke();
+  }
+}
+function drawParticles(){
+  for(const p of particles){
+    const a=Math.max(0,Math.min(1,p.life*1.5));
+    if(p.kind==="confetti"){ ctx.save();ctx.globalAlpha=a;ctx.translate(p.x,p.y);ctx.rotate(p.rot);ctx.fillStyle=p.col;ctx.fillRect(-4,-2.5,8,5);ctx.restore();ctx.globalAlpha=1; }
+    else if(p.kind==="splinter"){ ctx.save();ctx.globalAlpha=a;ctx.translate(p.x,p.y);ctx.rotate(p.rot);ctx.fillStyle="#efe6d0";ctx.fillRect(-1.2,-6,2.4,12);ctx.restore();ctx.globalAlpha=1; }
+  }
+}
+function drawTimingCue(){
+  // a subtle ring at the hit zone that closes as the ideal moment nears (eases off as you improve)
+  if(state!=="bowling"||!delivery) return;
+  const tNorm = ball.t/delivery.idealT;
+  if (tNorm<0.4) return;
+  const r = 26*Math.max(0.35,(1.25-tNorm));
+  const close = Math.abs(ball.t-delivery.idealT)<delivery.win.good;
+  ctx.strokeStyle = close ? "rgba(157,255,138,0.9)" : "rgba(255,255,255,0.4)";
+  ctx.lineWidth=close?3:2;
+  ctx.beginPath(); ctx.arc(BAT.x,HIT_Y,Math.max(8,r),0,Math.PI*2); ctx.stroke();
+}
+
+/* ================= main loop ================= */
+let lastFrame=performance.now();
+function frame(now){
+  const dt=Math.min(0.05,(now-lastFrame)/1000); lastFrame=now;
+  if(state!=="menu"&&state!=="over"&&state!=="paused") update(dt);
+
+  ctx.save();
+  if(shake>0) ctx.translate((Math.random()-.5)*shake,(Math.random()-.5)*shake);
+  ctx.drawImage(bgCanvas,0,0,W,H);
+
+  if(state!=="menu"){
+    drawField(now);
+    drawBowler(now);
+    // batsman stumps + batsman
+    drawStumps(BAT.x, BAT.y+2, 0.85, outcome&&outcome.how==="bowled"&&state==="flighting");
+    drawBatsman(now);
+    drawBall(now);
+    drawTimingCue();
+    drawParticles();
+    // outcome banner
+    if(outcomeT>0 && outcomeText){
+      const a=Math.min(1,outcomeT*1.4);
+      ctx.globalAlpha=a;
+      ctx.font="bold "+(outcomeBig?40:24)+"px Georgia, serif";
+      ctx.textAlign="center"; ctx.textBaseline="middle";
+      ctx.lineWidth=6; ctx.strokeStyle="#0c1f3a"; ctx.lineJoin="round";
+      const yy=H*0.30 - (1-a)*10;
+      ctx.strokeText(outcomeText,W/2,yy); ctx.fillStyle=outcomeCol; ctx.fillText(outcomeText,W/2,yy);
+      ctx.globalAlpha=1;
+    }
+    // coaching on the very first ball
+    if(mode!=="chase"&&balls===0&&score===0&&wkts===0&&(state==="bowling"||state==="between")){
+      ctx.globalAlpha=0.7+0.3*Math.sin(now/350);
+      ctx.font="bold 15px Trebuchet MS,sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+      ctx.lineWidth=4; ctx.strokeStyle="#0c1f3a"; ctx.lineJoin="round";
+      ctx.strokeText("Flick as the ball reaches the batter", W/2, H*0.7);
+      ctx.fillStyle="#fff"; ctx.fillText("Flick as the ball reaches the batter", W/2, H*0.7);
+      ctx.globalAlpha=1;
+    }
+  }
+  ctx.restore();
+  requestAnimationFrame(frame);
+}
+
+bestEl.textContent=best[mode];
+if(typeof globalThis!=="undefined") globalThis.__CR={
+  resolveShot, newDelivery, boundaryDist, setField,
+  get state(){return state;}, get score(){return score;}, get wkts(){return wkts;}, get balls(){return balls;},
+  get fielders(){return fielders;}, get delivery(){return delivery;},
+  startGameKnock(){ mode="knock"; startGame(); }, startGameChase(){ mode="chase"; startGame(); },
+  playShot, _bowl(){bowl();}, _setState(s){state=s;}, get outcome(){return outcome;}
+};
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
