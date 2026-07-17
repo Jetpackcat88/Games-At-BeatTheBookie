@@ -1,0 +1,4113 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#120c22">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="description" content="Word Wizards — rescue the words from the Inkwell Tower!">
+<title>Word Wizards</title>
+<style>
+  html, body {
+    margin: 0; padding: 0; height: 100%;
+    background: #120c22;
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+  canvas {
+    display: block;
+    touch-action: none;
+    -webkit-user-select: none; user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+/* ============================================================
+   WORD WIZARDS — data.js
+   Word banks (tiers 1–3 for Milestone 1), distractor pool,
+   letter maps, blocklists. British/Irish spellings throughout.
+   All words lowercase; displayed lowercase (sentence case UI).
+   ============================================================ */
+
+const WW_DATA = (function () {
+
+  // ---- Tier 1: high-frequency sight words (175) -------------
+  const TIER1 = [
+    "about","after","again","all","always","and","any","are","ask","away",
+    "back","ball","because","been","before","best","better","big","boy","but",
+    "call","came","can","come","could","day","did","does","down","eat",
+    "eight","every","fast","find","first","five","for","found","four","friend",
+    "from","full","fun","funny","get","girl","give","goes","going","good",
+    "had","has","have","help","her","here","him","his","home","house",
+    "how","hurt","into","jump","just","keep","kind","know","last","left",
+    "let","like","little","live","long","look","love","made","make","many",
+    "more","most","much","must","never","new","next","night","nine","not",
+    "now","off","old","once","one","only","open","our","out","over",
+    "park","party","people","play","please","pretty","pull","put","read","red",
+    "ride","right","round","run","said","school","see","seven","she","sleep",
+    "small","some","soon","stop","take","than","thank","that","the","their",
+    "them","then","there","they","thing","think","this","those","three","time",
+    "today","together","too","took","try","two","under","use","very","walk",
+    "want","was","water","way","well","went","were","what","when","where",
+    "which","white","who","why","will","wish","with","word","work","would",
+    "write","yellow","yes","you","your"
+  ];
+
+  // ---- Tier 2: phonics patterns (172) ------------------------
+  // silent-e, vowel teams, r-controlled, digraphs/blends
+  const TIER2 = [
+    "brave","cake","chase","flame","game","grape","late","name","plane","plate",
+    "save","shake","snake","space","trade","wave","whale","bike","hide","kite",
+    "life","line","mice","mine","price","prize","shine","slide","smile","spice",
+    "bone","close","globe","hole","hope","joke","nose","note","phone","rope",
+    "rose","smoke","spoke","stone","cube","cute","flute","huge","rude","rule",
+    "tune","beach","clean","cream","dream","heat","leaf","mean","meat","peach",
+    "scream","sea","speak","stream","teach","team","treat","deep","feel","feet",
+    "free","need","queen","sheep","speed","street","sweet","teeth","tree","week",
+    "wheel","boat","coach","coat","coast","float","goat","road","soap","throat",
+    "brain","chain","mail","nail","pain","paint","rain","sail","tail","train",
+    "wait","grey","stay","spray","bright","fight","flight","high","sight","brown",
+    "clown","crown","flower","owl","power","shower","tower","town","cloud","count",
+    "ground","mouse","mouth","proud","sound","south","book","cook","foot","wood",
+    "boot","food","moon","room","spoon","tooth","bird","dirt","shirt","third",
+    "burn","nurse","purple","turn","card","dark","farm","hard","shark","sharp",
+    "smart","star","start","storm","north","horse","short","sport","torch","catch",
+    "match","patch","switch","witch","lunch","crunch","munch","branch","splash","crash",
+    "flash","frog"
+  ];
+
+  // ---- Tier 3: tricky pairs, homophones, silent letters (145)
+  const TIER3 = [
+    "angel","angle","answer","aunt","autumn","bare","bear","beard","board","bored",
+    "bought","brake","break","breath","breathe","bridge","brought","build","built","busy",
+    "calf","calm","castle","caught","chalk","choose","chose","climb","clothes","colour",
+    "comb","cough","cousin","daughter","desert","dessert","double","doubt","dozen","early",
+    "earn","earth","echo","edge","enough","eye","field","flour","fought","fruit",
+    "ghost","giant","glove","great","group","guard","guess","guide","half","hear",
+    "heard","heart","heavy","height","herd","hour","island","juice","key","knee",
+    "kneel","knew","knife","knight","knock","knot","lamb","laugh","learn","listen",
+    "loose","lose","meant","minute","money","month","move","neither","ocean","often",
+    "onion","orange","pair","peace","pear","piece","quiet","quit","quite","rough",
+    "sale","scene","scissors","shoe","sign","son","steak","stomach","straight","sugar",
+    "sure","sword","taught","though","thought","through","thumb","tongue","touch","tough",
+    "treasure","trouble","truth","wander","wasp","wear","weather","weird","whether","whole",
+    "whose","woman","women","won","wonder","world","worm","worse","worth","wrap",
+    "wreck","wrist","wrong","yolk","young"
+  ];
+
+
+  // ---- Tier 4: richer vocabulary ----------------------------
+  const TIER4 = [
+    "adventure","ancient","anxious","balance","beneath","bravery","brilliant","captured","cautious","charming",
+    "cheerful","chuckle","clatter","clever","clumsy","compass","courage","crackle","creature","crimson",
+    "crumble","curious","dazzle","delicate","delighted","dizzy","dreadful","drowsy","eager","echoing",
+    "elegant","enormous","escape","exhausted","fable","famous","fantastic","feeble","ferocious","fierce",
+    "flicker","flourish","fortune","fragile","frantic","furious","gallop","gather","gentle","gigantic",
+    "glimmer","glisten","gloomy","glorious","gnarled","graceful","grateful","grumble","hollow","honest",
+    "horizon","however","huddle","hurtle","imagine","invisible","jagged","jealous","journey","joyful",
+    "knowledge","lantern","lonely","luminous","magnificent","marvellous","meadow","mighty","mischief","misty",
+    "moment","murmur","mutter","narrow","nervous","nimble","noble","notice","peculiar","perhaps",
+    "pounce","precious","prickle","puzzle","quiver","radiant","ragged","rapid","rescue","restless",
+    "riddle","rumble","rustle","scamper","scatter","scramble","scurry","secret","shadow","shimmer",
+    "shiver","shuffle","silent","slither","sparkle","splendid","sprint","squabble","stagger","startle",
+    "stumble","sturdy","stutter","sudden","summon","suspicious","swirl","tangle","tattered","tempest",
+    "terrible","thicket","thunder","tremble","triumph","twinkle","twisted","uneasy","valiant","vanish",
+    "velvet","victory","vivid","weary","whimper","whisper","wicked","wobble","wonderful",
+    "worried","wriggle","yearn","zigzag","bristle","cavern"
+  ];
+
+  // ---- Tier 5: stretch words --------------------------------
+  const TIER5 = [
+    "abandoned","absolutely","accidentally","adventurous","alphabet","ancestor","announcement","apologise","appearance","astonished",
+    "atmosphere","attentive","beautifully","bewildered","brilliantly","calculate","carefully","catastrophe","celebration","centipede",
+    "champion","character","chocolate","comfortable","committee","competition","completely","concentrate","confidence","confusion",
+    "congratulate","conversation","cooperate","courageous","curiosity","dangerous","decoration","definitely","delicious","description",
+    "determined","dictionary","difference","disappear","disappoint","discovery","disturbance","dramatic","dungeon","electricity",
+    "enchantment","encourage","enormously","enthusiasm","especially","everything","exaggerate","excitement","expedition","experiment",
+    "explanation","extraordinary","fascinating","favourite","frightened","furiously","generous","gigantically","gratitude","guardian",
+    "handkerchief","hesitate","hilarious","imagination","immediately","impossible","incredible","independent","information","ingredient",
+    "instrument","interesting","interrupt","invention","invitation","jewellery","knowledgeable","laboratory","legendary","lightning",
+    "marvellously","mechanical","mesmerise","microscope","miserable","mysterious","necessary","neighbour","occasionally",
+    "opportunity","ordinary","particular","peculiarly","performance","permanent","persuade","photograph","possibility","potion",
+    "practically","preparation","probably","professor","protection","questionnaire","reasonable","recognise","remarkable","remember",
+    "responsible","ridiculous","satisfied","scientific","sensational","separate","spectacular","splendidly","straighten","strengthen",
+    "successful","suddenly","surrender","surrounded","telescope","temperature","terrifying","thoughtful",
+    "tomorrow","tremendous","triumphant","unbelievable","underneath","unfortunate","unusual","victorious","volunteer",
+    "wilderness","wonderfully","yesterday","adorable","ambitious","announce"
+  ];
+
+  // ---- Supplementary distractor pool ------------------------
+  // Real words that never appear as targets, chosen as near-miss
+  // neighbours of bank words (edit distance 1–2, kid-safe).
+  const DISTRACTOR_POOL = [
+    "cattle","casual","battle","bottle","kettle","rattle","saddle","paddle","puddle","middle",
+    "candle","handle","bundle","jungle","single","circle","hose","dose","case",
+    "base","vase","lace","race","face","pace","dine","dome","mole","pole",
+    "pale","tale","tile","mile","file","fake","fade","fate","mate","rate",
+    "date","gaze","maze","haze","cape","tape","ripe","wipe","pipe","hire",
+    "wire","fire","tire","bore","core","sore","tore","wore","vane","cane",
+    "mane","lane","pane","dune","bead","lead","heap","leap","peak","peek",
+    "seek","meek","weed","deed","reed","weep","peep","jeep","heel","peel",
+    "reel","keen","teen","goad","toad","foam","roam","moan","groan","loan",
+    "soak","oak","oat","gain","grain","stain","plain","faint","saint","waist",
+    "waste","haste","taste","paste","chest","crest","quest","twist","blast","blend",
+    "brand","grand","stand","stamp","swamp","cramp","clamp","plump","stump","trunk",
+    "blink","brink","chunk","chick","thick","stick","brick","trick","track","truck",
+    "stuck","stack","snack","black","block","clock","flock","shock","stock","cloth",
+    "moth","myth","birth","perch","porch","march","harsh","hatch","latch","batch",
+    "ditch","fetch","stretch","scratch","hound","mound","pound","bound","frown","drown",
+    "gown","growth","booth","broom","bloom","gloom","stool","scoot","shoot","brook",
+    "crook","soot","hood","yarn","barn","yard","lark","mark","bark","spark",
+    "scarf","carve","forth","sworn","thorn","scorn","chore","score","snore","shore",
+    "store","stork","twirl","whirl","churn","blur","spur","surf","turf",
+    "herb","fern","stern","verse","nerve","serve","swerve","hive","dive","drive",
+    "strive","thrive","grove","clove","stole","scale","stale","shale","slate","state",
+    "skate","crate","grate","blaze","graze","brace","trace","place","glide","pride",
+    "bride","stride","spike","strike","swipe","stripe","quote","wrote","choke","doze",
+    "prone","clone","shone","throne","chrome","plume","prune","crude","dude","fume",
+    "mute","brute","chute","weave","leave","heave","sleeve","greet","fleet","sheet",
+    "steep","creep","sweep","cheep","breed","creed","greed","steed","tweed","steel",
+    "steer","cheer","sneer","beast","feast","least","yeast","bleach","breach","preach",
+    "teak","weak","bleak","creak","freak","sneak","squeak","streak","tweak","gleam",
+    "seam","beam","ream","realm","dread","tread","thread","spread",
+    "fine","wide","might","tight","loud","shout","bean","seat","wheat","main",
+    "paid","corn","fork","horn","woke","broke","cone","code","stove","drove",
+    "bake","gate","lake","cave","shade","dice","pine","twice","mule","tube",
+    "seed","seen","feed","bee","hook","stood","wool","noon","roof","root",
+    "pool","tray","clay","snail","toast","roast","load","goal","drain","skirt",
+    "stir","curl","purse","brush","fresh","pitch","grass","drum","crowd","howl",
+    "growl","buy","cold","done","fall","far","fly","gave","got","grow",
+    "hot","may","nice","own","ran","saw","say","show","sing","sit",
+    "talk","tell","ten","six","warm","its","each"
+  ];
+
+  // ---- Letter confusion pairs (for tile decoys & pseudowords)
+  const CONFUSIONS = {
+    b: ["d","h"], d: ["b"], p: ["q","b"], q: ["p","g"],
+    m: ["n","w"], n: ["m","u","r"], u: ["n","v"], v: ["u","w"], w: ["v","m"],
+    a: ["o","e"], o: ["a","c"], e: ["a","c"], c: ["e","o"],
+    i: ["l","j"], l: ["i","t"], t: ["f","l"], f: ["t"],
+    g: ["q","y"], y: ["g","v"], r: ["n"], s: ["z"], z: ["s"],
+    h: ["b","k"], k: ["h"], j: ["i"], x: ["k"]
+  };
+  const VOWELS = "aeiou";
+  const COMMON_DECOY_LETTERS = "eastrnloi";
+
+  // ---- Safety blocklists ------------------------------------
+  // Exact-match mild list + substring-match hard list.
+  // Applied to generated pseudowords and distractor choices.
+  const RUDE_EXACT = [
+    "poo","poop","pee","wee","bum","fart","butt","sex","sexy","hell",
+    "damn","crap","arse","ass","willy","boob","nude","naked","kill","dead",
+    "die","died","gun","guns","knob","turd","fatty","dummy","hate","hated"
+  ];
+  const RUDE_SUBSTRING = [
+    "fuck","shit","bitch","cock","dick","piss","wank","slut","slag","tits",
+    "cunt","twat","bugger","bollock"
+  ];
+
+  // ---- US spellings that must never appear ------------------
+  const US_SPELLINGS = [
+    "color","colors","favorite","favor","honor","humor","neighbor","gray","mom","moms",
+    "jewelry","center","meter","liter","theater","traveled","canceled","practicing","realize","organize",
+    "apologize","plow","catalog","dialog","donut","cozy","pajamas","gotten","airplane","aluminum"
+  ];
+
+
+  // ---- Rhyme Time: families + near-miss non-rhymes -----------
+  // Each: rhymes share the rime; foils look similar but do NOT rhyme.
+  const RHYMES = [
+    { key: "night", rhymes: ["light", "bright", "kite", "white", "fight", "right"], foils: ["nest", "note", "nice", "much"] },
+    { key: "cake",  rhymes: ["lake", "snake", "bake", "shake", "make"],             foils: ["cook", "back", "cave", "clock"] },
+    { key: "tree",  rhymes: ["free", "bee", "sea", "knee", "three"],                foils: ["true", "try", "trip", "toe"] },
+    { key: "boat",  rhymes: ["coat", "goat", "float", "throat", "note"],            foils: ["boot", "bat", "bought", "book"] },
+    { key: "rain",  rhymes: ["train", "chain", "plain", "brain", "mane"],           foils: ["run", "ring", "round", "ran"] },
+    { key: "moon",  rhymes: ["spoon", "soon", "balloon", "tune", "noon"],           foils: ["mud", "mane", "morning", "mouse"] },
+    { key: "star",  rhymes: ["car", "far", "jar", "guitar"],                        foils: ["stir", "store", "stay", "sort"] },
+    { key: "king",  rhymes: ["ring", "sing", "wing", "thing", "spring"],            foils: ["kind", "kick", "knee", "back"] },
+    { key: "mouse", rhymes: ["house", "blouse"],                                    foils: ["moose", "mouth", "mice", "horse"] },
+    { key: "cold",  rhymes: ["gold", "old", "bold", "told", "hold"],                foils: ["could", "call", "clean", "cool"] },
+    { key: "small", rhymes: ["tall", "ball", "wall", "call", "fall"],               foils: ["smell", "smile", "spell", "slow"] },
+    { key: "day",   rhymes: ["play", "way", "grey", "stay", "away"],                foils: ["dry", "dear", "dog", "die"] },
+    { key: "green", rhymes: ["queen", "seen", "mean", "clean", "bean"],             foils: ["grin", "grow", "groan", "gone"] },
+    { key: "hop",   rhymes: ["stop", "shop", "drop", "top", "mop"],                 foils: ["hope", "harp", "hat", "help"] },
+    { key: "wing",  rhymes: ["sting", "swing", "bring", "cling"],                   foils: ["win", "wind", "wine", "wrong"] },
+    { key: "duck",  rhymes: ["truck", "stuck", "luck", "cluck"],                    foils: ["dark", "dock", "deck", "dusk"] },
+    { key: "bell",  rhymes: ["shell", "spell", "well", "tell", "smell"],            foils: ["ball", "bill", "belt", "bull"] },
+    { key: "hair",  rhymes: ["chair", "bear", "pear", "stair", "share"],            foils: ["hear", "here", "hire", "harp"] },
+    { key: "sock",  rhymes: ["rock", "clock", "block", "lock", "knock"],            foils: ["sack", "sick", "soak", "smoke"] },
+    { key: "sun",   rhymes: ["fun", "run", "bun", "one", "done"],                   foils: ["soon", "sing", "sand", "sign"] }
+  ];
+
+  // ---- Odd One Out: categories --------------------------------
+  const CATEGORIES = [
+    { name: "colours",        conflicts: [],
+      words: ["red", "blue", "green", "yellow", "purple", "orange", "silver", "golden"] },
+    { name: "animals",        conflicts: [],
+      words: ["horse", "rabbit", "dragon", "badger", "otter", "wolf", "eagle", "hedgehog"] },
+    { name: "food",           conflicts: [],
+      words: ["bread", "cheese", "apple", "carrot", "soup", "pancake", "porridge", "biscuit"] },
+    { name: "things you wear",conflicts: ["in a castle"],
+      words: ["jumper", "boots", "scarf", "helmet", "gloves", "cloak", "hat", "coat"] },
+    { name: "weather",        conflicts: ["wet things", "in the sky"],
+      words: ["rain", "thunder", "sunshine", "snow", "fog", "breeze", "storm", "frost"] },
+    { name: "things in a house", conflicts: ["school things", "in a castle"],
+      words: ["door", "window", "kitchen", "stairs", "chimney", "cupboard", "carpet", "lamp"] },
+    { name: "numbers",        conflicts: [],
+      words: ["seven", "twelve", "twenty", "hundred", "eight", "thirty", "five", "nine"] },
+    { name: "things that fly",conflicts: ["in the sky", "things with wheels"],
+      words: ["kite", "rocket", "balloon", "aeroplane", "helicopter", "glider", "parachute", "spaceship"] },
+    { name: "body parts",     conflicts: [],
+      words: ["elbow", "shoulder", "thumb", "ankle", "wrist", "knee", "chin", "tongue"] },
+    { name: "school things",  conflicts: ["things in a house"],
+      words: ["pencil", "rubber", "ruler", "satchel", "crayon", "notebook", "glue", "scissors"] },
+    { name: "in the sky",     conflicts: ["weather", "things that fly"],
+      words: ["cloud", "moon", "star", "rainbow", "comet", "sunset", "planet", "lightning"] },
+    { name: "wet things",     conflicts: ["weather"],
+      words: ["river", "puddle", "ocean", "raindrop", "lake", "stream", "waterfall", "pond"] },
+    { name: "things with wheels", conflicts: ["things that fly"],
+      words: ["bicycle", "tractor", "wagon", "scooter", "lorry", "trolley", "skateboard", "caravan"] },
+    { name: "sounds",         conflicts: [],
+      words: ["whisper", "rumble", "squeak", "giggle", "clatter", "hiss", "crackle", "murmur"] },
+    { name: "trees & plants", conflicts: [],
+      words: ["oak", "fern", "bramble", "willow", "ivy", "thistle", "holly", "moss"] },
+    { name: "in a castle",    conflicts: ["things in a house", "things you wear"],
+      words: ["tower", "drawbridge", "throne", "dungeon", "banner", "moat", "turret", "armour"] }
+  ];
+
+  // ---- Sentence Gate: gap-fills, by band ----------------------
+  // band 1 ≈ tiers 1–2, band 2 ≈ tier 3, band 3 ≈ tiers 4–5
+  const SENTENCES = [
+    // band 1
+    { band: 1, text: "The dragon was too ___ to fit through the door.", answer: "big", options: ["big", "bug", "bag"] },
+    { band: 1, text: "I put my hat ___ my head.", answer: "on", options: ["on", "of", "off"] },
+    { band: 1, text: "We ___ to school every morning.", answer: "walk", options: ["walk", "week", "wake"] },
+    { band: 1, text: "The little owl can ___ at night.", answer: "fly", options: ["fly", "fry", "flu"] },
+    { band: 1, text: "My friend gave ___ a sweet.", answer: "me", options: ["me", "my", "we"] },
+    { band: 1, text: "Please ___ the door quietly.", answer: "shut", options: ["shut", "shot", "ship"] },
+    { band: 1, text: "The cat sat ___ the warm mat.", answer: "on", options: ["on", "in", "up"] },
+    { band: 1, text: "It is very ___ inside the cave.", answer: "dark", options: ["dark", "duck", "dock"] },
+    { band: 1, text: "She ___ her book on the shelf.", answer: "put", options: ["put", "pet", "pot"] },
+    { band: 1, text: "We ate all of the ___ cake.", answer: "sweet", options: ["sweet", "sweep", "swept"] },
+    { band: 1, text: "The wizard has a long white ___.", answer: "beard", options: ["beard", "bread", "board"] },
+    { band: 1, text: "Can you ___ me the answer?", answer: "tell", options: ["tell", "tall", "till"] },
+    { band: 1, text: "My little sister is ___ years old.", answer: "eight", options: ["eight", "eaten", "eagle"] },
+    { band: 1, text: "The dog wagged its ___.", answer: "tail", options: ["tail", "tale", "tall"] },
+    // band 2
+    { band: 2, text: "The knight lifted his heavy ___.", answer: "sword", options: ["sword", "sward", "sworn"] },
+    { band: 2, text: "Please be ___ in the library.", answer: "quiet", options: ["quiet", "quite", "quit"] },
+    { band: 2, text: "We walked ___ the dark forest.", answer: "through", options: ["through", "thought", "though"] },
+    { band: 2, text: "I could not ___ what she said.", answer: "hear", options: ["hear", "here", "heard"] },
+    { band: 2, text: "The chest was full of golden ___.", answer: "treasure", options: ["treasure", "trouble", "trousers"] },
+    { band: 2, text: "She ___ the ball right over the wall.", answer: "threw", options: ["threw", "through", "throw"] },
+    { band: 2, text: "My favourite ___ is bright green.", answer: "colour", options: ["colour", "collar", "column"] },
+    { band: 2, text: "The baby lamb followed its ___.", answer: "mother", options: ["mother", "mouth", "month"] },
+    { band: 2, text: "There was ___ food for everyone.", answer: "enough", options: ["enough", "rough", "cough"] },
+    { band: 2, text: "He ___ his coat because it was cold.", answer: "wore", options: ["wore", "were", "wear"] },
+    { band: 2, text: "The old bridge began to ___.", answer: "break", options: ["break", "brake", "bread"] },
+    { band: 2, text: "We had to ___ very early.", answer: "leave", options: ["leave", "leaf", "live"] },
+    { band: 2, text: "A ___ of pigeons landed on the roof.", answer: "pair", options: ["pair", "pear", "pare"] },
+    { band: 2, text: "The soup was much too ___.", answer: "hot", options: ["hot", "hut", "hat"] },
+    // band 3
+    { band: 3, text: "The cave was so dark it felt ___.", answer: "mysterious", options: ["mysterious", "miserable", "marvellous"] },
+    { band: 3, text: "She was ___ to open the ancient book.", answer: "curious", options: ["curious", "furious", "cautious"] },
+    { band: 3, text: "The tiny mouse gave a ___ squeak.", answer: "feeble", options: ["feeble", "fierce", "famous"] },
+    { band: 3, text: "Lanterns began to ___ in the darkness.", answer: "glimmer", options: ["glimmer", "grumble", "gallop"] },
+    { band: 3, text: "The knight showed great ___ in the battle.", answer: "courage", options: ["courage", "cottage", "carriage"] },
+    { band: 3, text: "Everyone gathered for the birthday ___.", answer: "celebration", options: ["celebration", "competition", "conversation"] },
+    { band: 3, text: "The mischievous imp planned to ___ completely.", answer: "disappear", options: ["disappear", "disappoint", "discover"] },
+    { band: 3, text: "Her cloak was made of soft purple ___.", answer: "velvet", options: ["velvet", "valley", "violet"] },
+    { band: 3, text: "The wizard's spell was absolutely ___.", answer: "spectacular", options: ["spectacular", "suspicious", "sensational"] },
+    { band: 3, text: "The floorboards began to ___ underfoot.", answer: "tremble", options: ["tremble", "trample", "tumble"] },
+    { band: 3, text: "He whispered a ___ into her ear.", answer: "secret", options: ["secret", "second", "section"] },
+    { band: 3, text: "The dragon's scales began to ___ in the light.", answer: "shimmer", options: ["shimmer", "shiver", "shuffle"] },
+    { band: 3, text: "It was an ___ adventure from start to finish.", answer: "incredible", options: ["incredible", "impossible", "invisible"] },
+    { band: 3, text: "The old librarian was very ___ and kind.", answer: "gentle", options: ["gentle", "gigantic", "grateful"] }
+  ];
+
+  // ---- The Bookshelf: story pages assemble into chapters -------
+  const CHAPTERS = [
+    { title: "The Silent Library", pages: 1, text:
+      "Once, the Great Library was the noisiest place in the world. Not with shouting — with words. Stories rustled on their shelves. Poems hummed. Every book whispered its tale to anyone who opened it.\n\nThen came the morning the whispering stopped. Emmie and Ada pushed open the heavy door and found row upon row of empty pages, white as snow. Every single word had gone." },
+    { title: "The Ink Queen", pages: 2, text:
+      "High in her tower of bottles and blots, the Ink Queen swallowed the words one by one. She was not wicked, exactly. She was lonely, and hungry, and words tasted of everything she had never had: adventure, and thunder, and cake.\n\n\"If I keep them all,\" she said, licking her lips, \"nobody can take them from me.\" But a word kept in a jar is a very quiet thing." },
+    { title: "The Blotlings", pages: 3, text:
+      "Her helpers were the Blotlings — round, wobbly, and much friendlier than they looked. Each one carried a stolen word on its back, wobbling up and down the tower stairs.\n\nThey did not mean any harm. They simply had never been told that words belong to everybody. When you zap one, it pops like a bubble and says \"oh!\" in surprise — and the word floats free at last." },
+    { title: "Two Apprentices", pages: 4, text:
+      "Two young wizards volunteered to climb the tower. They were sisters, and they argued about everything: who was faster, who was braver, who got the bigger slice.\n\nBut they agreed about one thing. Nobody — nobody — steals a story and gets away with it. They packed their wands, their courage, and a packet of biscuits, and set off." },
+    { title: "The First Floor", pages: 5, text:
+      "The first floor smelled of dust and old paper. Three Blotlings wobbled towards them, each carrying a word.\n\n\"Read it right,\" whispered Ada, \"and the magic works.\" Emmie squinted. She read the word aloud — carefully, slowly, the way you do when it matters. Her wand lit up like a struck match, and the word flew free as a paper butterfly." },
+    { title: "The Mole Merchant", pages: 6, text:
+      "Halfway up, a mole in a golden waistcoat had set out a little cart.\n\n\"Heart refill?\" he offered. \"Slow bubble? Everything reasonably priced, no refunds, mind.\" He had been living in the tower since before the trouble started, and he knew every stair, every shortcut, and exactly how much a frightened wizard would pay for a biscuit." },
+    { title: "The Word Storm", pages: 7, text:
+      "When five words are freed in a row, something extraordinary happens. The freed letters swirl together, faster and faster, and the whole tower fills with light.\n\nThe sisters called it a Word Storm. The Blotlings called it \"absolutely terrifying\" and hid behind the furniture. It only works if you read carefully — a Word Storm cannot be rushed." },
+    { title: "What the Owl Knew", pages: 8, text:
+      "The owl had lived in the tower's rafters for a hundred years, and had read every book twice.\n\n\"The Queen isn't strong,\" she hooted softly. \"She's just full. And things that are full can be emptied.\" She tilted her head. \"Also, the first letter is usually the hardest. I can help with that, if you'd like.\" And she has helped ever since." },
+    { title: "The Queen's Room", pages: 9, text:
+      "At the top of the tower, the Ink Queen sat surrounded by jars. Thousands of them. Every word she had ever swallowed, sealed up tight and going quietly grey.\n\n\"They're mine,\" she said. But her voice had no words left in it — she had eaten those too. She could only point, and the sisters could only read, and reading, it turns out, is louder than pointing." },
+    { title: "The Library Restored", pages: 10, text:
+      "One by one, the words went home. They fluttered down the stairs, out of the door, across the town, and into the empty books — settling onto pages like birds onto branches.\n\nThe Ink Queen watched them go, and did not stop them. Emmie handed her a book. \"You can read them,\" she said. \"That's allowed. That's what they're for.\"\n\nAnd the Great Library was noisy again." }
+  ];
+
+  // ---- Shop catalogue -----------------------------------------
+  // Prices form a ladder: something is always affordable soon.
+  const WARDROBE = [
+    { id: "hat_teal",    kind: "hat",   label: "Teal hat",        price: 30,  c: "#2fb7a8" },
+    { id: "hat_crimson", kind: "hat",   label: "Crimson hat",     price: 30,  c: "#d95763" },
+    { id: "hat_storm",   kind: "hat",   label: "Storm hat",       price: 60,  c: "#5a6ec8" },
+    { id: "goggles",     kind: "hat",   label: "Explorer goggles",price: 120, c: "#c98a3d" },
+    { id: "horns",       kind: "hat",   label: "Dragon-horn hood",price: 220, c: "#4f9d55" },
+    { id: "helm",        kind: "hat",   label: "Knight helm",     price: 350, c: "#9aa7b8" },
+    { id: "ears",        kind: "hat",   label: "Cat ears",        price: 150, c: "#7a5a9a" },
+    { id: "cape_gold",   kind: "cape",  label: "Golden cape",     price: 90,  c: "#e8a63d" },
+    { id: "cape_night",  kind: "cape",  label: "Night cape",      price: 160, c: "#3a3f8a" },
+    { id: "cape_flame",  kind: "cape",  label: "Flame cape",      price: 550, c: "#e0603a" },
+    { id: "wand_mint",   kind: "wand",  label: "Mint sparkles",   price: 40,  c: "#7fe0d4" },
+    { id: "wand_rose",   kind: "wand",  label: "Rose sparkles",   price: 80,  c: "#ff7d8a" },
+    { id: "wand_bolt",   kind: "wand",  label: "Lightning wand",  price: 260, c: "#ffe066" },
+    { id: "wand_star",   kind: "wand",  label: "Starfall wand",   price: 650, c: "#b58cff" }
+  ];
+  const PETS = [
+    { id: "owl",      label: "Owl",      icon: "🦉", price: 150,
+      blurb: "Shows the first letter once a floor", mod: { owl: true } },
+    { id: "cat",      label: "Cat",      icon: "🐈", price: 280,
+      blurb: "Gives you an extra heart",             mod: { extraHearts: 1 } },
+    { id: "dragonet", label: "Dragonet", icon: "🐉", price: 360,
+      blurb: "Burns away a wrong letter tile",       mod: { dragonet: true } },
+    { id: "sloth",    label: "Sloth",    icon: "🦥", price: 220,
+      blurb: "Blotlings drift 10% slower",           mod: { slowMul: 0.90 } }
+  ];
+  const UPGRADES = [
+    { id: "golden_heart", label: "Golden Heart",  icon: "❤️", price: 260,
+      blurb: "+1 heart, forever",                  mod: { extraHearts: 1 } },
+    { id: "lantern",      label: "Bright Lantern", icon: "🏮", price: 100,
+      blurb: "Words stay on screen longer",        mod: { revealBonus: 0.6 } },
+    { id: "patience",     label: "Patience Charm", icon: "🧿", price: 180,
+      blurb: "Blotlings drift 10% slower",         mod: { slowMul: 0.90 } },
+    { id: "shield",       label: "Second Chance",  icon: "🛡️", price: 600,
+      blurb: "One mistake forgiven each floor",    mod: { shield: true } },
+    { id: "magnet",       label: "Coin Magnet",    icon: "🧲", price: 400,
+      blurb: "+25% coins from everything",         mod: { coinMult: 1.25 } }
+  ];
+  // In-run mole merchant: this-run-only boosts, bought with run coins
+  const MERCHANT = [
+    { id: "heart",  label: "Heart refill",  icon: "❤️", price: 25, blurb: "Get a heart back" },
+    { id: "double", label: "Double coins",  icon: "✨", price: 30, blurb: "Next floor pays twice" },
+    { id: "bubble", label: "Slow bubble",   icon: "🫧", price: 20, blurb: "Blotlings slow right down" },
+    { id: "skip",   label: "Skip a word",   icon: "⏭️", price: 35, blurb: "Too tricky? Skip one" }
+  ];
+  const SHOP_INDEX = {};
+  [...WARDROBE, ...PETS, ...UPGRADES].forEach(it => { SHOP_INDEX[it.id] = it; });
+
+  const LIBRARY_GOAL = 500;   // words freed by both sisters together
+  const DAILY_GIFT = [40, 60, 80, 100];
+
+  const TIERS = [TIER1, TIER2, TIER3, TIER4, TIER5];
+
+  return {
+    TIERS, TIER1, TIER2, TIER3, TIER4, TIER5,
+    DISTRACTOR_POOL, CONFUSIONS, VOWELS, COMMON_DECOY_LETTERS,
+    RUDE_EXACT, RUDE_SUBSTRING, US_SPELLINGS,
+    WARDROBE, PETS, UPGRADES, MERCHANT, SHOP_INDEX, LIBRARY_GOAL, DAILY_GIFT,
+    RHYMES, CATEGORIES, SENTENCES, CHAPTERS,
+    MAX_TIER: TIERS.length
+  };
+})();
+
+if (typeof module !== "undefined") module.exports = WW_DATA;
+
+/* ============================================================
+   WORD WIZARDS — logic.js
+   Pure game logic. No DOM, no canvas. Everything here runs
+   headlessly under Node for the test harness.
+   Depends on WW_DATA (data.js).
+   ============================================================ */
+
+const WW_LOGIC = (function (DATA) {
+
+  // ---------------- RNG (deterministic, seedable) ------------
+  function mulberry32(seed) {
+    let a = seed >>> 0;
+    return function () {
+      a |= 0; a = (a + 0x6D2B79F5) | 0;
+      let t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+  function pick(rng, arr) { return arr[Math.floor(rng() * arr.length)]; }
+  function shuffle(rng, arr) {
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(rng() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+  const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+
+  // ---------------- Config (tunable, test-visible) -----------
+  const CONFIG = {
+    HEARTS: 3,
+    ZAP: 2,                 // coins per rescued word (Word Match)
+    SPELL_WORD: 3,          // coins per solved Spell-It word
+    STREAK_MIN: 3,          // streak length where bonus kicks in
+    STREAK_BONUS: 1,
+    STORM_NEED: 5,          // consecutive corrects to charge Word Storm
+    STORM_BONUS: 8,
+    CLEAR_BASE: 6,          // floor-clear bonus = CLEAR_BASE + floor
+    TREASURE_BASE: 12,      // treasure = TREASURE_BASE + 2 * floor
+    TREASURE_PER_FLOOR: 2,
+    BOSS_COINS: 30,
+    REST_HEAL: 1,
+    REST_FULL_COINS: 8,     // consolation if resting at full hearts
+    CHALLENGE_MULT: 2,
+    WAVES_EARLY: 3, WAVES_LATE: 4, WAVES_LATE_FLOOR: 3,
+    BLOTS_EARLY: 3, BLOTS_LATE: 4, BLOTS_LATE_FLOOR: 6,
+    DUR_BASE: 14, DUR_PER_FLOOR: 0.7, DUR_PER_WAVE: 0.4, DUR_MIN: 3.2,
+    SPELL_WORDS_PER_FLOOR: 3,
+    BOSS_EVERY: 5,
+    WAVE_DELAY: 0.9,        // pause between waves (s)
+    REACH_DELAY: 1.1,       // pause after a blot reaches the wizard
+    EASY_MIX: 0.25,         // chance a word comes from one tier below
+    SURGE: 0.10,            // wrong tap: how far every blotling lurches closer
+    WRONG_LOCK: 1.0,        // wrongly-tapped blotling is un-tappable this long
+    SHOP_REFRESH: 3,        // merchant stock size
+    DEEP_TIER_EVERY: 10,    // deeper floors also draw harder words
+    ODD_ROUNDS: 2, SENTENCE_ROUNDS: 2, FLASH_ROUNDS: 3,
+    REWARD_CAP_FLOOR: 12,   // coins stop scaling with depth here, so a deep run
+                            // doesn't out-earn a shallow one several times over
+    FLASH_TIME: 0.9,        // Speedy Flash: how long the word is visible
+    REVIEW_BONUS: 5         // "You caught a tricky word! +5"
+  };
+
+  // ---------------- Small string tools -----------------------
+  function levenshtein(a, b) {
+    const m = a.length, n = b.length;
+    if (Math.abs(m - n) > 2) return 99;
+    const dp = new Array(n + 1);
+    for (let j = 0; j <= n; j++) dp[j] = j;
+    for (let i = 1; i <= m; i++) {
+      let prev = dp[0]; dp[0] = i;
+      for (let j = 1; j <= n; j++) {
+        const tmp = dp[j];
+        dp[j] = Math.min(dp[j] + 1, dp[j - 1] + 1, prev + (a[i - 1] === b[j - 1] ? 0 : 1));
+        prev = tmp;
+      }
+    }
+    return dp[n];
+  }
+
+  const ASC = new Set("bdfhklt"), DESC = new Set("gjpqy");
+  function silhouette(w) {
+    let s = "";
+    for (const ch of w) s += ASC.has(ch) ? "A" : DESC.has(ch) ? "D" : "x";
+    return s;
+  }
+
+  function isRude(w) {
+    if (DATA.RUDE_EXACT.includes(w)) return true;
+    for (const bad of DATA.RUDE_SUBSTRING) if (w.includes(bad)) return true;
+    return false;
+  }
+
+  // ---------------- Pseudoword generator ---------------------
+  // Single letter-swap / transposition that stays pronounceable-ish.
+  function makePseudoword(word, rng, realSet) {
+    const ops = shuffle(rng, ["vowel", "conf", "trans"]);
+    for (let attempt = 0; attempt < 30; attempt++) {
+      const op = ops[attempt % ops.length];
+      const chars = word.split("");
+      let out = null;
+      if (op === "vowel") {
+        const idxs = [];
+        for (let i = 0; i < chars.length; i++) if (DATA.VOWELS.includes(chars[i])) idxs.push(i);
+        if (idxs.length) {
+          const i = pick(rng, idxs);
+          const repl = pick(rng, DATA.VOWELS.split("").filter(v => v !== chars[i]));
+          chars[i] = repl; out = chars.join("");
+        }
+      } else if (op === "conf") {
+        const idxs = [];
+        for (let i = 0; i < chars.length; i++) if (DATA.CONFUSIONS[chars[i]]) idxs.push(i);
+        if (idxs.length) {
+          const i = pick(rng, idxs);
+          chars[i] = pick(rng, DATA.CONFUSIONS[chars[i]]);
+          out = chars.join("");
+        }
+      } else { // transpose adjacent internal letters (keeps first letter)
+        if (word.length >= 4) {
+          const i = 1 + Math.floor(rng() * (word.length - 2));
+          if (chars[i] !== chars[i + 1]) {
+            [chars[i], chars[i + 1]] = [chars[i + 1], chars[i]];
+            out = chars.join("");
+          }
+        }
+      }
+      if (!out || out === word) continue;
+      if (realSet.has(out)) continue;
+      if (isRude(out)) continue;
+      if (!/[aeiou]/.test(out)) continue;
+      if (/(.)\1\1/.test(out)) continue;
+      if (/q(?!u)/.test(out)) continue;
+      return out;
+    }
+    return null;
+  }
+
+  // ---------------- Distractor index -------------------------
+  // Precomputed once: for every target word, a ranked list of
+  // real near-miss candidates, padded with pseudowords when the
+  // real pool is thin.
+  function buildDistractorIndex(rngSeed) {
+    const rng = mulberry32(rngSeed || 1234);
+    const targets = [];
+    DATA.TIERS.forEach(t => targets.push(...t));
+    const poolAll = Array.from(new Set([...targets, ...DATA.DISTRACTOR_POOL]));
+    const realSet = new Set(poolAll);
+    const silhs = new Map(poolAll.map(w => [w, silhouette(w)]));
+    const byLen = new Map();
+    for (const w of poolAll) {
+      const k = w.length;
+      if (!byLen.has(k)) byLen.set(k, []);
+      byLen.get(k).push(w);
+    }
+    const index = new Map();
+    const stats = { total: 0, withPseudo: 0, pseudoOnly: 0 };
+    for (const w of targets) {
+      const cands = [];
+      const sw = silhs.get(w);
+      for (let L = w.length - 2; L <= w.length + 2; L++) {
+        const bucket = byLen.get(L);
+        if (!bucket) continue;
+        for (const c of bucket) {
+          if (c === w) continue;
+          const d = levenshtein(w, c);
+          if (d > 2) continue;
+          let score = (3 - d) * 3;
+          const dl = Math.abs(c.length - w.length);
+          score += dl === 0 ? 2 : dl === 1 ? 1 : 0;
+          if (c[0] === w[0]) score += 2;
+          if (silhs.get(c) === sw) score += 3;
+          if (c[c.length - 1] === w[w.length - 1]) score += 1;
+          cands.push({ w: c, score, pseudo: false });
+        }
+      }
+      cands.sort((a, b) => b.score - a.score);
+      let top = cands.slice(0, 8);
+      stats.total++;
+      if (top.length < 4) {
+        const have = new Set(top.map(c => c.w));
+        let guard = 0;
+        while (top.length < 4 && guard++ < 40) {
+          const p = makePseudoword(w, rng, realSet);
+          if (p && !have.has(p)) { have.add(p); top.push({ w: p, score: 1, pseudo: true }); }
+        }
+        stats.withPseudo++;
+        if (!top.some(c => !c.pseudo)) stats.pseudoOnly++;
+      }
+      index.set(w, top);
+    }
+    return { index, stats, realSet };
+  }
+
+  function getDistractors(indexObj, word, n, rng, exclude) {
+    const list = (indexObj.index.get(word) || []).filter(c => !exclude.has(c.w));
+    const pool = shuffle(rng, list.slice(0, 6));
+    const out = [];
+    for (const c of pool) {
+      if (out.length >= n) break;
+      if (!out.includes(c.w)) out.push(c.w);
+    }
+    let guard = 0;
+    while (out.length < n && guard++ < 30) {
+      const p = makePseudoword(word, rng, indexObj.realSet);
+      if (p && !out.includes(p) && !exclude.has(p)) out.push(p);
+    }
+    return out;
+  }
+
+  // ---------------- Spell-It tile sets ------------------------
+  function tileSetFor(word, rng) {
+    const letters = word.split("");
+    const nDecoys = word.length > 9 ? 2 : 3;
+    const decoys = [];
+    for (const i of shuffle(rng, letters.map((_, k) => k))) {
+      if (decoys.length >= nDecoys) break;
+      const opts = DATA.CONFUSIONS[letters[i]];
+      if (!opts) continue;
+      const p = pick(rng, opts);
+      if (!word.includes(p) && !decoys.includes(p)) decoys.push(p);
+    }
+    for (const c of shuffle(rng, DATA.COMMON_DECOY_LETTERS.split(""))) {
+      if (decoys.length >= nDecoys) break;
+      if (!word.includes(c) && !decoys.includes(c)) decoys.push(c);
+    }
+    const tiles = shuffle(rng, [...letters, ...decoys]).map((ch, i) => ({ id: i, ch, used: false }));
+    return tiles;
+  }
+
+  // ---------------- Word picking ------------------------------
+  function pickWord(tierEff, rng, exclude) {
+    let tier = tierEff;
+    if (tier > 1 && rng() < CONFIG.EASY_MIX) tier -= 1;
+    for (const t of [tier, tierEff, 1]) {
+      const bank = DATA.TIERS[t - 1].filter(w => !exclude.has(w));
+      if (bank.length) return { word: pick(rng, bank), tier: t };
+    }
+    return { word: pick(rng, DATA.TIERS[0]), tier: 1 };
+  }
+
+  // ---------------- Save schema (pure helpers) ----------------
+  const SAVE_VERSION = 1;
+  function makeDefaultSave() {
+    return {
+      v: SAVE_VERSION,
+      profiles: [],
+      shared: { library: 0 },
+      settings: { muted: false, tts: true }
+    };
+  }
+  function newProfile(name, colour) {
+    return {
+      id: "p" + Date.now().toString(36) + Math.floor(Math.random() * 1e4).toString(36),
+      name, colour,
+      coins: 0, bestFloor: 0, wordsFreed: 0, runsPlayed: 0,
+      tier: 1, tierVotes: 0, tierCooldown: 0,
+      wordStats: {}, storyPages: 0, chaptersRead: 0,
+      recent: { 1: [], 2: [], 3: [], 4: [], 5: [] },
+      reviewPouch: [],
+      unlocks: { cosmetics: [], pets: [], upgrades: [] },
+      equipped: {},
+      lastGift: null,
+      createdAt: Date.now()
+    };
+  }
+  function recordAnswer(profile, tier, ok) {
+    const arr = profile.recent[tier] || (profile.recent[tier] = []);
+    arr.push(ok ? 1 : 0);
+    if (arr.length > 20) arr.shift();
+  }
+  function validateSave(obj) {
+    if (!obj || typeof obj !== "object") return null;
+    if (obj.v !== SAVE_VERSION) return null;
+    if (!Array.isArray(obj.profiles)) return null;
+    return obj;
+  }
+
+  // ---------------- Run state machine -------------------------
+  // Phases: wave | spell | boss | treasure | rest | doors | runEnd
+  function createRun(opts) {
+    const rng = mulberry32(opts.rngSeed || (Date.now() & 0xffffffff));
+    const indexObj = opts.indexObj; // shared, prebuilt
+    const baseTier = clamp(opts.tier || 1, 1, DATA.MAX_TIER);
+    // Modifiers from owned pets + upgrades (see DATA.SHOP)
+    const M = Object.assign({
+      extraHearts: 0,     // Cat, Golden Heart
+      slowMul: 1,         // Sloth, Patience Charm  (lower = slower blots)
+      coinMult: 1,        // Coin Magnet
+      shield: false,      // Second-Chance Shield: one forgiven mistake per floor
+      owl: false,         // reveals first letter, once per floor
+      dragonet: false,    // burns one decoy tile in Spell-It
+      revealBonus: 0      // Bright Lantern: longer word reveal (used by UI)
+    }, opts.mods || {});
+    const maxHearts = (opts.maxHearts || CONFIG.HEARTS) + M.extraHearts;
+
+    const R = {
+      phase: "none",
+      floor: 0, floorKind: "battle", mode: "match",
+      hearts: maxHearts, maxHearts,
+      runCoins: 0,
+      streak: 0, bestStreak: 0,
+      stormCharge: 0, stormReady: false,
+      wordsFreed: [],
+      wordLog: [],           // {word, ok} — per-word mastery evidence
+      answers: [],           // {tier, ok} — for adaptive data
+      reviewPouch: [],       // escaped/missed words (new this run)
+      pouchCleared: [],      // review words they nailed
+      pouchMissed: [],       // review words still tricky
+      promptReview: false,
+      storyPages: 0,
+      blots: [], prompt: null, promptTier: baseTier,
+      spell: null, boss: null,
+      rhyme: null, odd: null, sentence: null, flash: null,
+      doors: [], treasure: null, rest: null,
+      summary: null,
+      _usedWords: new Set(),
+      _waveIdx: 0, _wavesTotal: 0,
+      _lastMode: "spell",    // so first battle is "match"
+      _tierBoost: 0, _coinMult: 1,
+      _pouch: (opts.pouch || []).slice(),
+      mods: M,
+      _slowT: M.slowMul,        // current blot speed multiplier (merchant bubble stacks)
+      shieldReady: M.shield,    // recharges each floor
+      skipTokens: 0,
+      shop: null,               // merchant stock when phase === "shop"
+      _doubleNext: false,
+      _timer: 0, _pendingAction: null,
+      _events: []
+    };
+
+    const emit = (e) => R._events.push(e);
+    const grant = (amount, reason) => {
+      const c = Math.round(amount * M.coinMult);
+      R.runCoins += c;
+      return c;
+    };
+
+    function effTier() { return clamp(baseTier + R._tierBoost, 1, DATA.MAX_TIER); }
+
+    // Every answered word gets logged, so Dad can see what's mastered and what's not.
+    function logWord(word, ok) {
+      if (!word) return;
+      R.wordLog.push({ word, ok: !!ok });
+    }
+    function correctAnswered(tier) {
+      R.streak++; R.bestStreak = Math.max(R.bestStreak, R.streak);
+      R.stormCharge++;
+      R.answers.push({ tier, ok: true });
+      if (!R.stormReady && R.stormCharge >= CONFIG.STORM_NEED) {
+        R.stormReady = true;
+        emit({ t: "stormReady" });
+      }
+    }
+    function wrongAnswered(tier) {
+      R.streak = 0; R.stormCharge = 0;
+      R.answers.push({ tier, ok: false });
+    }
+
+    // ---- floors ----
+    function enterFloor(kind) {
+      R.floor++;
+      R.floorKind = kind;
+      R._usedWords.clear();
+      R._coinMult = 1; R._tierBoost = 0;
+      R.doors = []; R.treasure = null; R.rest = null; R.spell = null; R.boss = null;
+      R.blots = []; R.prompt = null;
+      R.rhyme = null; R.odd = null; R.sentence = null; R.flash = null;
+
+      R.shieldReady = M.shield;      // shield recharges every floor
+      R._slowT = M.slowMul;          // slow-motion bubble expires with the floor
+      R._owlUsed = false;
+      R._floorPenalty = 0;
+      if (R._doubleNext) { R._coinMult *= 2; R._doubleNext = false; }
+      R._tierBoost += Math.floor(R.floor / CONFIG.DEEP_TIER_EVERY);   // the tower deepens
+      if (kind === "challenge") { R._tierBoost += 1; R._coinMult *= CONFIG.CHALLENGE_MULT; }
+      if (kind === "shop") {
+        R.phase = "shop";
+        R.shop = { items: rollShop(), bought: [] };
+        emit({ t: "floorStart", floor: R.floor, kind, mode: null });
+        return;
+      }
+
+      if (kind === "battle" || kind === "challenge") {
+        R.mode = nextMode();
+        R._lastMode = R.mode;
+        emit({ t: "floorStart", floor: R.floor, kind, mode: R.mode });
+        startMode(R.mode);
+      } else if (kind === "treasure") {
+        R.phase = "treasure";
+        R.treasure = {
+          opened: false,
+          amount: CONFIG.TREASURE_BASE + CONFIG.TREASURE_PER_FLOOR * Math.min(R.floor, CONFIG.REWARD_CAP_FLOOR)
+        };
+        emit({ t: "floorStart", floor: R.floor, kind, mode: null });
+      } else if (kind === "rest") {
+        R.phase = "rest";
+        R.rest = { taken: false, healed: 0, coins: 0 };
+        emit({ t: "floorStart", floor: R.floor, kind, mode: null });
+      } else if (kind === "boss") {
+        emit({ t: "floorStart", floor: R.floor, kind, mode: "boss" });
+        startBoss();
+      }
+    }
+
+    function finishRoom(clearBonus) {
+      if (clearBonus) {
+        const depth = Math.min(R.floor, CONFIG.REWARD_CAP_FLOOR);
+        const c = grant((CONFIG.CLEAR_BASE + depth) * R._coinMult, "clear");
+        emit({ t: "floorClear", floor: R.floor, coins: c });
+      }
+      makeDoors();
+    }
+
+    function makeDoors() {
+      const next = R.floor + 1;
+      if (next % CONFIG.BOSS_EVERY === 0) {
+        R.doors = [{ type: "boss", label: "Boss", icon: "👑" }];
+      } else {
+        const opts = [
+          { type: "battle", label: "Battle", icon: "🗡️", w: 0.40 },
+          { type: "treasure", label: "Treasure", icon: "💰", w: 0.22 },
+          { type: "rest", label: "Rest", icon: "❤️", w: R.hearts < R.maxHearts ? 0.20 : 0.06 }
+        ];
+        if (next >= 3) opts.push({ type: "challenge", label: "Challenge", icon: "⭐", w: 0.18 });
+        if (next >= 2) opts.push({ type: "shop", label: "Shop", icon: "🛒", w: 0.18 });
+        const count = rng() < 0.35 ? 2 : Math.min(3, opts.length);
+        const chosen = [];
+        const pool = opts.slice();
+        while (chosen.length < count && pool.length) {
+          const total = pool.reduce((s, o) => s + o.w, 0);
+          let r = rng() * total;
+          let idx = 0;
+          for (let i = 0; i < pool.length; i++) { r -= pool[i].w; if (r <= 0) { idx = i; break; } }
+          chosen.push(pool.splice(idx, 1)[0]);
+        }
+        R.doors = shuffle(rng, chosen).map(o => ({ type: o.type, label: o.label, icon: o.icon }));
+      }
+      R.phase = "doors";
+      emit({ t: "doors", options: R.doors });
+    }
+
+    // ---- Mode rotation ----
+    // Keeps it fresh; never the same mode twice running. Comprehension modes
+    // (sentence/odd) unlock a little later so floor 1 is always simple.
+    // Word Match is the only mode where monsters can actually reach you, so it
+    // carries most of the run's risk. Weight it heavily or the tower gets safe
+    // and a good reader simply climbs forever.
+    function nextMode() {
+      const pool = [
+        { m: "match", w: 0.40 },
+        { m: "spell", w: 0.22 }
+      ];
+      if (R.floor >= 2) pool.push({ m: "rhyme", w: 0.12 });
+      if (R.floor >= 3) pool.push({ m: "flash", w: 0.12 });
+      if (R.floor >= 4) pool.push({ m: "odd", w: 0.07 }, { m: "sentence", w: 0.07 });
+      const choices = pool.filter(o => o.m !== R._lastMode);
+      const list = choices.length ? choices : pool;
+      const total = list.reduce((s2, o) => s2 + o.w, 0);
+      let r = rng() * total;
+      for (const o of list) { r -= o.w; if (r <= 0) return o.m; }
+      return list[0].m;
+    }
+    function startMode(m) {
+      if (m === "match") startMatchFloor();
+      else if (m === "spell") startSpellFloor();
+      else if (m === "rhyme") startRhymeFloor();
+      else if (m === "odd") startOddFloor();
+      else if (m === "sentence") startSentenceFloor();
+      else if (m === "flash") startFlashFloor();
+      else startMatchFloor();
+    }
+
+    // ---- Rhyme Time: tap everything that rhymes ----
+    function startRhymeFloor() {
+      R.phase = "rhyme";
+      const fam = pick(rng, DATA.RHYMES);
+      const nRhyme = Math.min(fam.rhymes.length, 2 + Math.floor(rng() * 2)); // 2–3
+      const rhymes = shuffle(rng, fam.rhymes).slice(0, nRhyme);
+      const foils = shuffle(rng, fam.foils).slice(0, Math.max(2, 5 - nRhyme));
+      const cards = shuffle(rng, [
+        ...rhymes.map(w => ({ word: w, ok: true, tapped: false })),
+        ...foils.map(w => ({ word: w, ok: false, tapped: false }))
+      ]);
+      R.rhyme = { key: fam.key, cards, found: 0, need: rhymes.length };
+      emit({ t: "rhymeStart", key: fam.key, need: rhymes.length });
+      emit({ t: "speak", word: fam.key });
+    }
+    function tapRhyme(i) {
+      if (R.phase !== "rhyme" || R._pendingAction) return;
+      const c = R.rhyme.cards[i];
+      if (!c || c.tapped) return;
+      c.tapped = true;
+      if (c.ok) {
+        correctAnswered(effTier());
+        logWord(c.word, true);
+        R.rhyme.found++;
+        R.wordsFreed.push(c.word);
+        const coins = puzzlePay(CONFIG.ZAP);
+        emit({ t: "rhymeHit", idx: i, word: c.word, coins, left: R.rhyme.need - R.rhyme.found });
+        if (R.rhyme.found >= R.rhyme.need) {
+          schedule(CONFIG.WAVE_DELAY, () => finishRoom(true));
+        }
+      } else {
+        wrongAnswered(effTier());
+        logWord(c.word, false);
+        emit({ t: "rhymeMiss", idx: i, word: c.word });
+        puzzleMiss();
+      }
+    }
+
+    // ---- Odd One Out ----
+    function startOddFloor() {
+      R.phase = "odd";
+      R._oddRound = 0;
+      loadOdd();
+    }
+    function loadOdd() {
+      const cat = pick(rng, DATA.CATEGORIES);
+      // Never draw the odd word from an overlapping category — "is an owl an
+      // animal or a thing that flies?" is a fair argument, not a puzzle.
+      const conflicts = cat.conflicts || [];
+      const others = DATA.CATEGORIES.filter(c =>
+        c.name !== cat.name &&
+        !conflicts.includes(c.name) &&
+        !(c.conflicts || []).includes(cat.name));
+      const oddCat = pick(rng, others);
+      const inWords = shuffle(rng, cat.words).slice(0, 3);
+      const oddWord = pick(rng, oddCat.words.filter(w => !cat.words.includes(w)));
+      const cards = shuffle(rng, [
+        ...inWords.map(w => ({ word: w, odd: false, out: false })),
+        { word: oddWord, odd: true, out: false }
+      ]);
+      R.odd = {
+        category: cat.name, cards, done: false,
+        round: R._oddRound + 1, total: CONFIG.ODD_ROUNDS
+      };
+      emit({ t: "oddStart", category: cat.name, round: R.odd.round, total: R.odd.total });
+    }
+    function tapOdd(i) {
+      if (R.phase !== "odd" || R.odd.done || R._pendingAction) return;
+      const c = R.odd.cards[i];
+      if (!c || c.out) return;
+      if (c.odd) {
+        R.odd.done = true;
+        correctAnswered(effTier());
+        logWord(c.word, true);
+        R.wordsFreed.push(c.word);
+        const coins = puzzlePay(CONFIG.SPELL_WORD + 2);
+        emit({ t: "oddHit", idx: i, word: c.word, coins });
+        R._oddRound++;
+        if (R._oddRound >= CONFIG.ODD_ROUNDS) schedule(CONFIG.WAVE_DELAY, () => finishRoom(true));
+        else schedule(CONFIG.WAVE_DELAY, loadOdd);
+      } else {
+        wrongAnswered(effTier());
+        c.out = true;                 // crossed out, so they close in on the answer
+        emit({ t: "oddMiss", idx: i, word: c.word });
+        puzzleMiss();
+      }
+    }
+
+    // ---- Sentence Gate ----
+    function bandFor(t) { return t <= 2 ? 1 : t <= 3 ? 2 : 3; }
+    function startSentenceFloor() {
+      R.phase = "sentence";
+      R._sentRound = 0;
+      loadSentence();
+    }
+    function loadSentence() {
+      const band = bandFor(effTier());
+      const pool = DATA.SENTENCES.filter(s2 => s2.band === band && !R._usedWords.has(s2.text));
+      const s2 = pick(rng, pool.length ? pool : DATA.SENTENCES.filter(x => x.band === band));
+      R._usedWords.add(s2.text);
+      R.sentence = {
+        text: s2.text, answer: s2.answer,
+        options: shuffle(rng, s2.options.slice()),
+        out: [], done: false,
+        round: R._sentRound + 1, total: CONFIG.SENTENCE_ROUNDS
+      };
+      emit({ t: "sentenceStart", text: s2.text, round: R.sentence.round, total: R.sentence.total });
+    }
+    function tapSentence(i) {
+      if (R.phase !== "sentence" || R.sentence.done || R._pendingAction) return;
+      const opt = R.sentence.options[i];
+      if (!opt || R.sentence.out.includes(i)) return;
+      if (opt === R.sentence.answer) {
+        R.sentence.done = true;
+        correctAnswered(effTier());
+        logWord(opt, true);
+        R.wordsFreed.push(opt);
+        const coins = puzzlePay(CONFIG.SPELL_WORD + 3);
+        emit({ t: "sentenceHit", idx: i, word: opt, coins });
+        R._sentRound++;
+        if (R._sentRound >= CONFIG.SENTENCE_ROUNDS) schedule(CONFIG.WAVE_DELAY + 0.4, () => finishRoom(true));
+        else schedule(CONFIG.WAVE_DELAY + 0.4, loadSentence);
+      } else {
+        wrongAnswered(effTier());
+        logWord(R.sentence.answer, false);
+        R.sentence.out.push(i);
+        emit({ t: "sentenceMiss", idx: i, word: opt });
+        puzzleMiss();
+      }
+    }
+
+    // ---- Speedy Flash ----
+    function startFlashFloor() {
+      R.phase = "flash";
+      R._flashRound = 0;
+      loadFlash();
+    }
+    function loadFlash() {
+      const { word, tier } = pickWord(effTier(), rng, R._usedWords);
+      R._usedWords.add(word);
+      const ds = getDistractors(indexObj, word, 3, rng, new Set([word]));
+      R.flash = {
+        word, tier,
+        options: shuffle(rng, [word, ...ds]),
+        showFor: CONFIG.FLASH_TIME + M.revealBonus,
+        out: [], shown: true, done: false,
+        round: R._flashRound + 1, total: CONFIG.FLASH_ROUNDS
+      };
+      emit({ t: "flashStart", word, showFor: R.flash.showFor, round: R.flash.round, total: R.flash.total });
+      emit({ t: "speak", word });
+      schedule(R.flash.showFor, () => {
+        if (R.flash) { R.flash.shown = false; emit({ t: "flashHide" }); }
+      });
+    }
+    function tapFlash(i) {
+      if (R.phase !== "flash" || R.flash.shown || R.flash.done || R._pendingAction) return;
+      const opt = R.flash.options[i];
+      if (!opt || R.flash.out.includes(i)) return;
+      if (opt === R.flash.word) {
+        R.flash.done = true;
+        correctAnswered(R.flash.tier);
+        logWord(opt, true);
+        R.wordsFreed.push(opt);
+        const coins = puzzlePay(CONFIG.SPELL_WORD + 1);
+        emit({ t: "flashHit", idx: i, word: opt, coins });
+        R._flashRound++;
+        if (R._flashRound >= CONFIG.FLASH_ROUNDS) schedule(CONFIG.WAVE_DELAY, () => finishRoom(true));
+        else schedule(CONFIG.WAVE_DELAY, loadFlash);
+      } else {
+        wrongAnswered(R.flash.tier);
+        logWord(R.flash.word, false);
+        R.flash.out.push(i);
+        emit({ t: "flashMiss", idx: i, word: opt });
+        puzzleMiss();
+      }
+    }
+
+    // A miss in the puzzle rooms. Per the brief, pressure only ever comes from
+    // monster proximity — so these cost the streak and the floor's payout,
+    // never a heart. Guessing is punished in the currency kids actually care about.
+    function puzzleMiss() {
+      R._floorPenalty = (R._floorPenalty || 0) + 1;
+      emit({ t: "puzzleMiss", penalty: R._floorPenalty });
+    }
+    function puzzlePay(base) {
+      const mult = Math.max(0.25, 1 - 0.35 * (R._floorPenalty || 0));
+      return grant(Math.max(1, Math.round(base * mult)) * R._coinMult, "puzzle");
+    }
+
+    // ---- Word Match ----
+    function startMatchFloor() {
+      R.phase = "wave";
+      R._wavesTotal = R.floor < CONFIG.WAVES_LATE_FLOOR ? CONFIG.WAVES_EARLY : CONFIG.WAVES_LATE;
+      R._waveIdx = 0;
+      spawnWave();
+    }
+    function blotCount() {
+      return R.floor >= CONFIG.BLOTS_LATE_FLOOR ? CONFIG.BLOTS_LATE : CONFIG.BLOTS_EARLY;
+    }
+    function waveDuration() {
+      return Math.max(CONFIG.DUR_MIN,
+        CONFIG.DUR_BASE - CONFIG.DUR_PER_FLOOR * (R.floor - 1) - CONFIG.DUR_PER_WAVE * R._waveIdx);
+    }
+    function spawnWave() {
+      const n = blotCount();
+      const t = effTier();
+      // A word they got wrong resurfaces a couple of floors later — and pays.
+      let word, tier, isReview = false;
+      const due = R._pouch.find(e => e.due <= R.floor && !R._usedWords.has(e.word));
+      if (due && rng() < 0.7) {
+        word = due.word; tier = t; isReview = true;
+      } else {
+        const p2 = pickWord(t, rng, R._usedWords);
+        word = p2.word; tier = p2.tier;
+      }
+      R._usedWords.add(word);
+      R.prompt = word; R.promptTier = tier; R.promptReview = isReview;
+      const ds = getDistractors(indexObj, word, n - 1, rng, R._usedWords);
+      const words = shuffle(rng, [word, ...ds]);
+      const lanes = shuffle(rng, n === 3 ? [0.22, 0.5, 0.78] : [0.15, 0.38, 0.62, 0.85]);
+      const D = waveDuration();
+      R.blots = words.map((w, i) => ({
+        word: w, isTarget: w === word,
+        progress: -0.06 * i,
+        speed: (1 / D) * (0.95 + rng() * 0.1),
+        lane: lanes[i], seed: rng(),
+        alive: true, fleeing: false, wrongAt: 0, lockT: 0
+      }));
+      emit({ t: "wave", index: R._waveIdx, total: R._wavesTotal, word });
+      emit({ t: "speak", word });
+    }
+    function resolveWave(freedByStorm) {
+      for (const b of R.blots) if (b.alive) { b.alive = false; b.fleeing = true; }
+      R._waveIdx++;
+      if (R._waveIdx >= R._wavesTotal) {
+        schedule(CONFIG.WAVE_DELAY, () => finishRoom(true));
+      } else {
+        schedule(CONFIG.WAVE_DELAY, spawnWave);
+      }
+    }
+
+    function tapBlot(i) {
+      if (R.phase !== "wave") return;
+      const b = R.blots[i];
+      if (!b || !b.alive) return;
+      if (b.lockT > 0) return;          // briefly un-tappable after a wrong guess
+      if (b.isTarget) {
+        const bonus = R.streak + 1 >= CONFIG.STREAK_MIN ? CONFIG.STREAK_BONUS : 0;
+        correctAnswered(R.promptTier);
+        logWord(b.word, true);
+        let c = grant((CONFIG.ZAP + bonus) * R._coinMult, "zap");
+        R.wordsFreed.push(b.word);
+        b.alive = false;
+        if (R.promptReview) {
+          // mistakes literally become treasure
+          const extra = grant(CONFIG.REVIEW_BONUS, "review");
+          c += extra;
+          R._pouch = R._pouch.filter(e => e.word !== b.word);
+          R.pouchCleared.push(b.word);
+          emit({ t: "reviewWin", word: b.word, coins: extra });
+        }
+        emit({ t: "zap", idx: i, word: b.word, coins: c, streak: R.streak });
+        resolveWave(false);
+      } else {
+        wrongAnswered(R.promptTier);
+        logWord(R.prompt, false);
+        b.wrongAt = 1;
+        b.lockT = CONFIG.WRONG_LOCK;
+        // Guessing costs runway, not hearts: everything lurches closer.
+        for (const o of R.blots) {
+          if (o.alive) o.progress = Math.min(0.985, o.progress + CONFIG.SURGE);
+        }
+        if (!R.reviewPouch.includes(R.prompt)) R.reviewPouch.push(R.prompt);
+        if (R.promptReview) R.pouchMissed.push(R.prompt);
+        emit({ t: "wrong", idx: i, surge: CONFIG.SURGE });
+      }
+    }
+
+    function useSkip() {
+      if (R.skipTokens <= 0) return;
+      if (R.phase === "wave") {
+        R.skipTokens--;
+        const target = R.blots.find(b => b.isTarget);
+        if (target) target.alive = false;
+        emit({ t: "skip", word: R.prompt });
+        resolveWave(true);
+      } else if (R.phase === "spell") {
+        R.skipTokens--;
+        const s = R.spell;
+        emit({ t: "skip", word: s.words[s.idx].word });
+        s.idx++;
+        if (s.idx >= s.total) schedule(CONFIG.WAVE_DELAY, () => finishRoom(true));
+        else schedule(CONFIG.WAVE_DELAY, loadSpellWord);
+      }
+    }
+
+    function tapStorm() {
+      if (!R.stormReady || R.phase !== "wave") return;
+      R.stormReady = false; R.stormCharge = 0;
+      const target = R.blots.find(b => b.isTarget);
+      let c = 0;
+      if (target && target.alive) {
+        R.wordsFreed.push(target.word);
+        c = grant(CONFIG.ZAP * R._coinMult + CONFIG.STORM_BONUS, "storm");
+        target.alive = false;
+      }
+      emit({ t: "storm", coins: c, word: target ? target.word : null });
+      resolveWave(true);
+    }
+
+    // ---- Spell-It ----
+    function startSpellFloor() {
+      R.phase = "spell";
+      const words = [];
+      for (let i = 0; i < CONFIG.SPELL_WORDS_PER_FLOOR; i++) {
+        const { word, tier } = pickWord(effTier(), rng, R._usedWords);
+        R._usedWords.add(word);
+        words.push({ word, tier });
+      }
+      R.spell = { words, idx: 0, slots: [], tiles: [], fails: 0, hints: false, total: words.length };
+      loadSpellWord();
+    }
+    function loadSpellWord() {
+      const s = R.spell;
+      const w = s.words[s.idx].word;
+      s.slots = new Array(w.length).fill(null);
+      s.tiles = tileSetFor(w, rng);
+      s.fails = 0; s.hints = false;
+      s.firstLetter = false;
+      // Dragonet burns away one decoy tile
+      if (M.dragonet) {
+        // burn a tile whose letter appears more often in the tiles than in the word
+        let burn = -1;
+        for (let i = 0; i < s.tiles.length; i++) {
+          const ch = s.tiles[i].ch;
+          const inWord = w.split("").filter(c => c === ch).length;
+          const inTiles = s.tiles.filter(t => t.ch === ch).length;
+          if (inTiles > inWord) { burn = i; break; }
+        }
+        if (burn >= 0) {
+          const gone = s.tiles.splice(burn, 1)[0];
+          emit({ t: "dragonet", ch: gone.ch });
+        }
+      }
+      // Owl reveals the first letter, once per floor
+      if (M.owl && !R._owlUsed) {
+        R._owlUsed = true;
+        s.firstLetter = true;
+        emit({ t: "owl", ch: w[0] });
+      }
+      emit({ t: "spellWord", word: w, index: s.idx, total: s.total, boss: R.phase === "boss" });
+      emit({ t: "speak", word: w });
+    }
+    function currentSpellWord() {
+      const s = R.spell; return s ? s.words[s.idx].word : null;
+    }
+    function tapTile(id) {
+      if (R.phase !== "spell" && R.phase !== "boss") return;
+      const s = R.spell;
+      const tile = s.tiles.find(t => t.id === id);
+      if (!tile || tile.used) return;
+      const slot = s.slots.indexOf(null);
+      if (slot === -1) return;
+      s.slots[slot] = { ch: tile.ch, tileId: id };
+      tile.used = true;
+      emit({ t: "tileTap", slot, ch: tile.ch });
+      if (s.slots.indexOf(null) === -1) checkSpell();
+    }
+    function tapBackspace() {
+      if (R.phase !== "spell" && R.phase !== "boss") return;
+      const s = R.spell;
+      for (let i = s.slots.length - 1; i >= 0; i--) {
+        if (s.slots[i]) {
+          const tile = s.tiles.find(t => t.id === s.slots[i].tileId);
+          if (tile) tile.used = false;
+          s.slots[i] = null;
+          emit({ t: "backspace", slot: i });
+          return;
+        }
+      }
+    }
+    function checkSpell() {
+      const s = R.spell;
+      const word = s.words[s.idx].word;
+      const attempt = s.slots.map(x => x.ch).join("");
+      const isBoss = R.phase === "boss";
+      if (attempt === word) {
+        correctAnswered(s.words[s.idx].tier);
+        logWord(word, true);
+        R.wordsFreed.push(word);
+        if (isBoss) {
+          R.boss.segmentsDone++;
+          emit({ t: "bossHit", segment: R.boss.segmentsDone, word });
+          if (R.boss.segmentsDone >= 3) {
+            const c = grant(CONFIG.BOSS_COINS * R._coinMult, "boss");
+            R.storyPages++;
+            emit({ t: "bossDown", coins: c, floor: R.floor, page: R.storyPages });
+            schedule(1.4, () => finishRoom(false));
+          } else {
+            s.idx++;
+            schedule(0.9, loadSpellWord);
+          }
+        } else {
+          const c = grant(CONFIG.SPELL_WORD * R._coinMult, "spell");
+          emit({ t: "spellSolve", word, coins: c, streak: R.streak });
+          s.idx++;
+          if (s.idx >= s.total) schedule(CONFIG.WAVE_DELAY, () => finishRoom(true));
+          else schedule(CONFIG.WAVE_DELAY, loadSpellWord);
+        }
+      } else {
+        wrongAnswered(s.words[s.idx].tier);
+        logWord(word, false);
+        s.fails++;
+        // return tiles
+        for (const slot of s.slots) {
+          const tile = s.tiles.find(t => t.id === slot.tileId);
+          if (tile) tile.used = false;
+        }
+        s.slots = new Array(word.length).fill(null);
+        const hintAt = isBoss ? 1 : 2;
+        if (s.fails >= hintAt && !s.hints) { s.hints = true; emit({ t: "hintsOn", word }); }
+        emit({ t: "spellFail", fails: s.fails });
+        if (isBoss) {
+          loseHeart("boss");
+        }
+      }
+    }
+
+    // ---- Boss ----
+    function startBoss() {
+      R.phase = "boss";
+      const t = effTier();
+      const bank = DATA.TIERS[t - 1].filter(w => !R._usedWords.has(w));
+      const sorted = bank.slice().sort((a, b) => a.length - b.length);
+      const third = Math.max(1, Math.floor(sorted.length / 3));
+      const easy = pick(rng, sorted.slice(0, third));
+      const med = pick(rng, sorted.slice(third, third * 2).filter(w => w !== easy));
+      const hard = pick(rng, sorted.slice(third * 2).filter(w => w !== easy && w !== med));
+      const words = [easy, med, hard].map(w => { R._usedWords.add(w); return { word: w, tier: t }; });
+      R.boss = { segmentsDone: 0, isQueen: R.floor === 25 };
+      R.spell = { words, idx: 0, slots: [], tiles: [], fails: 0, hints: false, total: 3 };
+      emit({ t: "bossStart", floor: R.floor, isQueen: R.boss.isQueen });
+      loadSpellWord();
+    }
+
+    // ---- Merchant (in-run shop) ----
+    function rollShop() {
+      const stock = shuffle(rng, DATA.MERCHANT.slice());
+      const items = [];
+      for (const it of stock) {
+        if (items.length >= CONFIG.SHOP_REFRESH) break;
+        if (it.id === "heart" && R.hearts >= R.maxHearts) continue; // never sell a useless refill
+        items.push(Object.assign({}, it));
+      }
+      return items;
+    }
+    function buyItem(i) {
+      if (R.phase !== "shop" || !R.shop) return;
+      const it = R.shop.items[i];
+      if (!it || R.shop.bought.includes(i)) return;
+      if (R.runCoins < it.price) { emit({ t: "tooPoor", price: it.price }); return; }
+      R.runCoins -= it.price;
+      R.shop.bought.push(i);
+      switch (it.id) {
+        case "heart":
+          R.hearts = Math.min(R.maxHearts, R.hearts + 1);
+          break;
+        case "double":
+          R._doubleNext = true;
+          break;
+        case "bubble":
+          R._slowT = M.slowMul * 0.6;   // lasts until the next floor starts
+          break;
+        case "skip":
+          R.skipTokens++;
+          break;
+      }
+      emit({ t: "bought", id: it.id, price: it.price, label: it.label, hearts: R.hearts });
+    }
+    function leaveShop() {
+      if (R.phase !== "shop") return;
+      makeDoors();
+    }
+
+    // ---- Treasure / Rest ----
+    function openChest() {
+      if (R.phase !== "treasure" || R.treasure.opened) return;
+      R.treasure.opened = true;
+      const c = grant(R.treasure.amount, "treasure");
+      emit({ t: "treasure", coins: c });
+      schedule(1.2, () => finishRoom(false));
+    }
+    function takeRest() {
+      if (R.phase !== "rest" || R.rest.taken) return;
+      R.rest.taken = true;
+      if (R.hearts < R.maxHearts) {
+        R.hearts = Math.min(R.maxHearts, R.hearts + CONFIG.REST_HEAL);
+        R.rest.healed = CONFIG.REST_HEAL;
+        emit({ t: "rest", healed: CONFIG.REST_HEAL, coins: 0, hearts: R.hearts });
+      } else {
+        const c = grant(CONFIG.REST_FULL_COINS, "rest");
+        R.rest.coins = c;
+        emit({ t: "rest", healed: 0, coins: c, hearts: R.hearts });
+      }
+      schedule(1.1, () => finishRoom(false));
+    }
+
+    // ---- Hearts / end ----
+    function loseHeart(reason) {
+      if (R.shieldReady) {           // Second-Chance Shield: forgiven, once per floor
+        R.shieldReady = false;
+        emit({ t: "shieldUsed", reason });
+        return;
+      }
+      R.hearts--;
+      emit({ t: "heartLost", hearts: R.hearts, reason });
+      if (R.hearts <= 0) endRun("hearts");
+    }
+    function endRun(reason) {
+      R.phase = "runEnd";
+      R._pendingAction = null;
+      R.summary = {
+        reason,
+        floor: R.floor,
+        coins: R.runCoins,
+        wordsFreed: R.wordsFreed.slice(),
+        bestStreak: R.bestStreak,
+        answers: R.answers.slice(),
+        wordLog: R.wordLog.slice(),
+        reviewPouch: R.reviewPouch.slice(),
+        pouchCleared: R.pouchCleared.slice(),
+        pouchMissed: R.pouchMissed.slice(),
+        storyPages: R.storyPages
+      };
+      emit({ t: "runEnd", summary: R.summary });
+    }
+
+    // ---- doors ----
+    function chooseDoor(i) {
+      if (R.phase !== "doors") return;
+      const d = R.doors[i];
+      if (!d) return;
+      emit({ t: "doorChosen", type: d.type });
+      enterFloor(d.type);
+    }
+
+    // ---- timing ----
+    function schedule(delay, fn) {
+      R._timer = delay; R._pendingAction = fn;
+    }
+    function tick(dt) {
+      if (R.phase === "runEnd") return;
+      if (R._pendingAction) {
+        R._timer -= dt;
+        if (R._timer <= 0) {
+          const fn = R._pendingAction; R._pendingAction = null;
+          fn();
+        }
+        return; // world pauses between beats
+      }
+      if (R.phase === "wave") {
+        let reached = false;
+        for (const b of R.blots) {
+          if (!b.alive) continue;
+          b.progress += b.speed * dt * R._slowT;
+          if (b.wrongAt > 0) b.wrongAt = Math.max(0, b.wrongAt - dt * 2);
+          if (b.lockT > 0) b.lockT = Math.max(0, b.lockT - dt);
+          if (b.progress >= 1) reached = true;
+        }
+        if (reached) {
+          const escaped = R.prompt;
+          logWord(escaped, false);
+          if (escaped && !R.reviewPouch.includes(escaped)) R.reviewPouch.push(escaped);
+          wrongAnswered(R.promptTier);
+          for (const b of R.blots) if (b.alive) { b.alive = false; b.fleeing = true; }
+          emit({ t: "reach", word: escaped });
+          loseHeart("reach");
+          if (R.phase !== "runEnd") {
+            R._waveIdx++;
+            if (R._waveIdx >= R._wavesTotal) schedule(CONFIG.REACH_DELAY, () => finishRoom(true));
+            else schedule(CONFIG.REACH_DELAY, spawnWave);
+          }
+        }
+      }
+    }
+
+    function quit() {
+      if (R.phase !== "runEnd") endRun("quit");
+    }
+
+    function drainEvents() {
+      const e = R._events; R._events = [];
+      return e;
+    }
+
+    function snapshot() { return R; }
+
+    // start!
+    enterFloor("battle");
+
+    return {
+      tick, tapBlot, tapTile, tapBackspace, tapStorm, useSkip,
+      tapRhyme, tapOdd, tapSentence, tapFlash,
+      chooseDoor, openChest, takeRest, buyItem, leaveShop, quit,
+      drainEvents, snapshot, currentSpellWord
+    };
+  }
+
+  // Modifiers derived from a profile's owned pets + upgrades
+  function modsFor(profile) {
+    const m = { extraHearts: 0, slowMul: 1, coinMult: 1, shield: false, owl: false, dragonet: false, revealBonus: 0 };
+    if (!profile) return m;
+    const owned = [].concat(profile.unlocks.pets || [], profile.unlocks.upgrades || []);
+    for (const id of owned) {
+      const it = DATA.SHOP_INDEX[id];
+      if (!it || !it.mod) continue;
+      const mo = it.mod;
+      if (mo.extraHearts) m.extraHearts += mo.extraHearts;
+      if (mo.slowMul) m.slowMul *= mo.slowMul;
+      if (mo.coinMult) m.coinMult *= mo.coinMult;
+      if (mo.revealBonus) m.revealBonus += mo.revealBonus;
+      if (mo.shield) m.shield = true;
+      if (mo.owl) m.owl = true;
+      if (mo.dragonet) m.dragonet = true;
+    }
+    return m;
+  }
+
+  // ---------------- Adaptive difficulty (invisible) ------------
+  const PROMOTE_AT = 0.85, DEMOTE_AT = 0.50, MIN_SAMPLE = 12;
+  function accuracy(profile, tier) {
+    const arr = (profile.recent && profile.recent[tier]) || [];
+    if (!arr.length) return null;
+    return arr.reduce((a, b) => a + b, 0) / arr.length;
+  }
+  // Called at run end. Moves at most one tier, and never whipsaws:
+  // promotion needs a full sample at high accuracy, demotion sustained struggle.
+  function adaptTier(profile) {
+    const t = clamp(profile.tier || 1, 1, DATA.MAX_TIER);
+    const arr = (profile.recent && profile.recent[t]) || [];
+    if (arr.length < MIN_SAMPLE) return { tier: t, moved: 0 };
+    const acc = arr.reduce((a, b) => a + b, 0) / arr.length;
+
+    // Cooldown: after a move, give them a couple of runs to settle at the new
+    // level before judging again. Without this a promotion can bounce straight back.
+    if (profile.tierCooldown > 0) {
+      profile.tierCooldown--;
+      profile.tierVotes = 0;
+      return { tier: t, moved: 0, acc, cooling: true };
+    }
+
+    // Hysteresis: one lucky (or unlucky) run is not evidence. A tier only moves
+    // when the same verdict comes back twice running — otherwise a steady reader
+    // bobbing around the threshold gets bounced up and down for no reason.
+    const wantUp = acc >= PROMOTE_AT && t < DATA.MAX_TIER;
+    const wantDown = acc <= DEMOTE_AT && t > 1;
+    let votes = profile.tierVotes || 0;
+    if (wantUp) votes = Math.max(0, votes) + 1;
+    else if (wantDown) votes = Math.min(0, votes) - 1;
+    else votes = 0;                       // back in the comfortable band: forget it
+    profile.tierVotes = votes;
+
+    if (votes >= 2 && t < DATA.MAX_TIER) {
+      profile.tier = t + 1;
+      profile.recent[profile.tier] = [];
+      profile.tierVotes = 0;
+      profile.tierCooldown = 2;
+      return { tier: profile.tier, moved: +1, acc };
+    }
+    if (votes <= -2 && t > 1) {
+      profile.tier = t - 1;
+      profile.recent[profile.tier] = [];
+      profile.tierVotes = 0;
+      profile.tierCooldown = 2;
+      return { tier: profile.tier, moved: -1, acc };
+    }
+    return { tier: t, moved: 0, acc };
+  }
+  // Review pouch: wrong words come back 2–3 floors later, and pay a bonus.
+  function pouchAdd(profile, word, floor) {
+    if (!word) return;
+    const pouch = profile.reviewPouch = profile.reviewPouch || [];
+    const existing = pouch.find(e => e.word === word);
+    if (existing) { existing.due = (floor || 0) + 2; return; }
+    pouch.push({ word, due: (floor || 0) + 2, seen: 0 });
+    while (pouch.length > 24) pouch.shift();
+  }
+  function pouchDue(profile, floor) {
+    const pouch = (profile.reviewPouch || []).filter(e => e.due <= floor);
+    return pouch[0] || null;
+  }
+  function pouchClear(profile, word) {
+    profile.reviewPouch = (profile.reviewPouch || []).filter(e => e.word !== word);
+  }
+  function pouchMissAgain(profile, word, floor) {
+    const e = (profile.reviewPouch || []).find(x => x.word === word);
+    if (e) { e.due = floor + 3; e.seen++; }
+  }
+
+  // ---------------- Word mastery (for the grown-ups report) ----
+  const MASTERY_HITS = 2;   // right this many times in a row, with no recent slip
+  function recordWordResult(profile, word, ok) {
+    const st = profile.wordStats = profile.wordStats || {};
+    const e = st[word] || (st[word] = { r: 0, w: 0, streak: 0 });
+    if (ok) { e.r++; e.streak++; }
+    else { e.w++; e.streak = 0; }
+    return e;
+  }
+  function wordReport(profile) {
+    const st = profile.wordStats || {};
+    const mastered = [], tricky = [], learning = [];
+    const pouchWords = new Set((profile.reviewPouch || []).map(e => e.word || e));
+    for (const [word, e] of Object.entries(st)) {
+      const total = e.r + e.w;
+      const acc = total ? e.r / total : 0;
+      if (pouchWords.has(word)) tricky.push({ word, acc, total });
+      else if (e.streak >= MASTERY_HITS && acc >= 0.75) mastered.push({ word, acc, total });
+      else learning.push({ word, acc, total });
+    }
+    const byWord = (a, b) => a.word.localeCompare(b.word);
+    mastered.sort(byWord); tricky.sort(byWord); learning.sort(byWord);
+    return { mastered, tricky, learning, seen: Object.keys(st).length };
+  }
+  function resetProfile(profile) {
+    profile.coins = 0; profile.bestFloor = 0; profile.wordsFreed = 0; profile.runsPlayed = 0;
+    profile.tier = 1; profile.tierVotes = 0; profile.tierCooldown = 0;
+    profile.recent = { 1: [], 2: [], 3: [], 4: [], 5: [] };
+    profile.reviewPouch = [];
+    profile.wordStats = {};
+    profile.unlocks = { cosmetics: [], pets: [], upgrades: [] };
+    profile.equipped = {};
+    profile.storyPages = 0; profile.chaptersRead = 0;
+    profile.lastGift = null;
+    return profile;
+  }
+
+  // ---------------- Shop / profile economy (pure) --------------
+  function catalogue(section) {
+    return section === "wardrobe" ? DATA.WARDROBE
+      : section === "pets" ? DATA.PETS
+        : section === "upgrades" ? DATA.UPGRADES : [];
+  }
+  function bucketFor(item) {
+    if (DATA.WARDROBE.includes(item)) return "cosmetics";
+    if (DATA.PETS.includes(item)) return "pets";
+    return "upgrades";
+  }
+  function owns(profile, id) {
+    const u = profile.unlocks;
+    return (u.cosmetics || []).includes(id) || (u.pets || []).includes(id) || (u.upgrades || []).includes(id);
+  }
+  function canAfford(profile, item) { return profile.coins >= item.price; }
+  function buy(profile, item) {
+    if (!item || owns(profile, item.id) || !canAfford(profile, item)) return false;
+    profile.coins -= item.price;
+    const bucket = bucketFor(item);
+    (profile.unlocks[bucket] = profile.unlocks[bucket] || []).push(item.id);
+    // cosmetics auto-equip; a pet becomes the active companion
+    if (bucket === "cosmetics") profile.equipped[item.kind] = item.id;
+    if (bucket === "pets") profile.equipped.pet = item.id;
+    return true;
+  }
+  function equip(profile, id) {
+    const item = DATA.SHOP_INDEX[id];
+    if (!item || !owns(profile, id)) return false;
+    if (DATA.PETS.includes(item)) profile.equipped.pet = (profile.equipped.pet === id ? null : id);
+    else profile.equipped[item.kind] = (profile.equipped[item.kind] === id ? null : id);
+    return true;
+  }
+  // Cheapest thing they don't own yet — drives the "always something to save for" test
+  function nextGoal(profile) {
+    const all = [...DATA.WARDROBE, ...DATA.PETS, ...DATA.UPGRADES]
+      .filter(it => !owns(profile, it.id))
+      .sort((a, b) => a.price - b.price);
+    return all[0] || null;
+  }
+  function dayStamp(now) {
+    const d = new Date(now || Date.now());
+    return d.getFullYear() + "-" + (d.getMonth() + 1) + "-" + d.getDate();
+  }
+  function giftReady(profile, now) {
+    return profile.lastGift !== dayStamp(now);
+  }
+  function claimGift(profile, now, rnd) {
+    if (!giftReady(profile, now)) return 0;
+    profile.lastGift = dayStamp(now);
+    const r = (rnd || Math.random)();
+    const amount = DATA.DAILY_GIFT[Math.floor(r * DATA.DAILY_GIFT.length)];
+    profile.coins += amount;
+    return amount;
+  }
+
+  return {
+    mulberry32, shuffle, pick, clamp, modsFor,
+    levenshtein, silhouette, isRude,
+    makePseudoword, buildDistractorIndex, getDistractors,
+    tileSetFor, pickWord,
+    makeDefaultSave, newProfile, recordAnswer, validateSave,
+    catalogue, owns, canAfford, buy, equip, nextGoal,
+    accuracy, adaptTier, pouchAdd, pouchDue, pouchClear, pouchMissAgain,
+    recordWordResult, wordReport, resetProfile, MASTERY_HITS,
+    PROMOTE_AT, DEMOTE_AT, MIN_SAMPLE,
+    giftReady, claimGift, dayStamp,
+    CONFIG, SAVE_VERSION,
+    createRun
+  };
+})(typeof WW_DATA !== "undefined" ? WW_DATA : require("../src/data.js"));
+
+if (typeof module !== "undefined") module.exports = WW_LOGIC;
+
+/* ============================================================
+   WORD WIZARDS — game.js
+   Rendering, input, audio, TTS, screens. Browser-only; exits
+   immediately under Node so the logic stays headlessly testable.
+   ============================================================ */
+
+const WW_GAME = (function (DATA, L) {
+  if (typeof window === "undefined" || !DATA || !L) return null;
+
+  // ---------------- Constants --------------------------------
+  const W = 390, H = 844;
+  const PAL = {
+    bgTop: "#1a1230", bgBot: "#2b1e4e",
+    purple: "#4a3a7a", purpleDeep: "#332659",
+    gold: "#ffcf6b", goldDeep: "#e8a838",
+    parch: "#f6ead2", parchShade: "#e6d4b0",
+    ink: "#2e2338",
+    mint: "#7fe0d4",
+    heart: "#ff7d8a",
+    blot: "#241a3d", blotHi: "#4b3a78"
+  };
+  const ROBES = {
+    teal: "#2aa79b", crimson: "#d1495b", forest: "#3e8e5a",
+    gold: "#e0a83c", violet: "#8f6fd1", sky: "#5aa7de"
+  };
+  const F = (px, w) => `${w || 600} ${px}px system-ui, "Segoe UI", Roboto, sans-serif`;
+  const SAVE_KEY = "wordwizards.save.v1";
+  const FIELD_TOP = 250, FIELD_BOT = 640, WIZ_Y = 700;
+
+  // ---------------- Tiny utils -------------------------------
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const lerp = (a, b, t) => a + (b - a) * t;
+  const easeOut = t => 1 - Math.pow(1 - t, 3);
+  const easeIn = t => t * t * t;
+  const rnd = Math.random;
+
+  function rr(c, x, y, w, h, r) {
+    r = Math.min(r, w / 2, h / 2);
+    c.beginPath();
+    c.moveTo(x + r, y);
+    c.arcTo(x + w, y, x + w, y + h, r);
+    c.arcTo(x + w, y + h, x, y + h, r);
+    c.arcTo(x, y + h, x, y, r);
+    c.arcTo(x, y, x + w, y, r);
+    c.closePath();
+  }
+  function fitFont(c, text, maxW, px, weight) {
+    let p = px;
+    c.font = F(p, weight);
+    while (c.measureText(text).width > maxW && p > 12) { p -= 1; c.font = F(p, weight); }
+    return p;
+  }
+  function vib(pat) { try { if (navigator.vibrate && !Store.data.settings.muted) navigator.vibrate(pat); } catch (e) { } }
+
+  // ---------------- Save store -------------------------------
+  const Store = {
+    data: null, persistent: true,
+    load() {
+      let d = null;
+      try { d = L.validateSave(JSON.parse(localStorage.getItem(SAVE_KEY))); }
+      catch (e) { this.persistent = false; }
+      this.data = d || L.makeDefaultSave();
+      // patch older/partial saves gently
+      if (!this.data.settings) this.data.settings = { muted: false, tts: true };
+    },
+    save() {
+      try { localStorage.setItem(SAVE_KEY, JSON.stringify(this.data)); }
+      catch (e) { this.persistent = false; }
+    }
+  };
+
+  // ---------------- Audio (procedural) ------------------------
+  const Audio2 = {
+    ctx: null, master: null, loopTimer: null, chordIdx: 0, ready: false,
+    ensure() {
+      if (this.ready) { if (this.ctx.state === "suspended") this.ctx.resume(); return; }
+      try {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        this.ctx = new AC();
+        this.master = this.ctx.createGain();
+        this.master.gain.value = Store.data.settings.muted ? 0 : 1;
+        this.master.connect(this.ctx.destination);
+        this.ready = true;
+        this.startLoop();
+      } catch (e) { }
+    },
+    setMuted(m) { if (this.master) this.master.gain.value = m ? 0 : 1; },
+    tone(freq, dur, type, vol, slideTo, when) {
+      if (!this.ready) return;
+      const t0 = (when || this.ctx.currentTime);
+      const o = this.ctx.createOscillator(), g = this.ctx.createGain();
+      o.type = type || "sine"; o.frequency.setValueAtTime(freq, t0);
+      if (slideTo) o.frequency.exponentialRampToValueAtTime(Math.max(30, slideTo), t0 + dur);
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(vol || 0.15, t0 + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+      o.connect(g); g.connect(this.master);
+      o.start(t0); o.stop(t0 + dur + 0.05);
+    },
+    noise(dur, vol, lpFreq) {
+      if (!this.ready) return;
+      const t0 = this.ctx.currentTime;
+      const len = Math.floor(this.ctx.sampleRate * dur);
+      const buf = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
+      const d = buf.getChannelData(0);
+      for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len);
+      const src = this.ctx.createBufferSource(); src.buffer = buf;
+      const lp = this.ctx.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = lpFreq || 1200;
+      const g = this.ctx.createGain(); g.gain.value = vol || 0.2;
+      src.connect(lp); lp.connect(g); g.connect(this.master);
+      src.start(t0);
+    },
+    play(name, opt) {
+      if (!this.ready) return;
+      opt = opt || {};
+      switch (name) {
+        case "zap": this.tone(620, 0.12, "square", 0.10, 90); this.noise(0.06, 0.06, 2400); break;
+        case "pop": this.noise(0.07, 0.10, 1500); this.tone(300, 0.10, "sine", 0.08, 80); break;
+        case "coin": this.tone(920, 0.07, "triangle", 0.09); this.tone(1380, 0.09, "triangle", 0.09, null, this.ctx.currentTime + 0.06); break;
+        case "tick": this.tone(520, 0.05, "triangle", 0.07); break;
+        case "tickLow": this.tone(320, 0.06, "triangle", 0.07); break;
+        case "wrong": this.tone(210, 0.16, "sine", 0.08, 160); break;
+        case "heart": this.tone(180, 0.30, "triangle", 0.12, 80); this.noise(0.18, 0.06, 500); break;
+        case "streak": { const notes = [523, 587, 659, 784, 880]; this.tone(notes[clamp(opt.n || 0, 0, 4)], 0.12, "triangle", 0.09); break; }
+        case "chargeUp": for (let i = 0; i < 4; i++) this.tone(440 + i * 160, 0.10, "triangle", 0.08, null, this.ctx.currentTime + i * 0.07); break;
+        case "storm": this.tone(300, 0.5, "sawtooth", 0.10, 1200); this.noise(0.4, 0.10, 3000); break;
+        case "fanfare": { const seq = [523, 659, 784]; seq.forEach((f, i) => this.tone(f, 0.16, "triangle", 0.10, null, this.ctx.currentTime + i * 0.11)); break; }
+        case "bossHit": this.tone(500, 0.18, "square", 0.12, 70); this.noise(0.14, 0.12, 900); break;
+        case "boom": this.tone(90, 0.5, "sine", 0.16, 40); this.noise(0.3, 0.10, 400); break;
+        case "door": this.noise(0.12, 0.10, 700); this.tone(240, 0.10, "triangle", 0.07, 180); break;
+        case "chest": this.tone(392, 0.10, "triangle", 0.09); this.tone(523, 0.10, "triangle", 0.09, null, this.ctx.currentTime + 0.08); this.tone(659, 0.14, "triangle", 0.10, null, this.ctx.currentTime + 0.16); break;
+        case "heal": this.tone(660, 0.2, "sine", 0.08, 880); break;
+      }
+    },
+    startLoop() {
+      if (this.loopTimer) return;
+      const chords = [
+        [220.0, 261.63, 329.63], // Am
+        [174.61, 220.0, 261.63], // F
+        [196.0, 246.94, 293.66], // G... gentle walk
+        [164.81, 196.0, 246.94]  // Em
+      ];
+      const step = () => {
+        if (!this.ready || Store.data.settings.muted) return;
+        const t0 = this.ctx.currentTime + 0.05;
+        const ch = chords[this.chordIdx % chords.length]; this.chordIdx++;
+        for (const fq of ch) {
+          const o = this.ctx.createOscillator(), g = this.ctx.createGain();
+          const lp = this.ctx.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 800;
+          o.type = "triangle"; o.frequency.value = fq / 2;
+          g.gain.setValueAtTime(0.0001, t0);
+          g.gain.linearRampToValueAtTime(0.028, t0 + 0.8);
+          g.gain.linearRampToValueAtTime(0.0001, t0 + 3.6);
+          o.connect(lp); lp.connect(g); g.connect(this.master);
+          o.start(t0); o.stop(t0 + 3.8);
+        }
+      };
+      this.loopTimer = setInterval(step, 3800);
+      step();
+    }
+  };
+
+  // ---------------- Text to speech ----------------------------
+  const TTS = {
+    voice: null, tried: false, spoke: false, failed: false, attempts: 0, status: "",
+    get available() { return "speechSynthesis" in window; },
+    get on() { return this.available && Store.data.settings.tts; },
+    // Never gate on getVoices(): on Android Chrome the list is empty until
+    // the first real speak(). We just try, and learn from the result.
+    get ready() { return this.available && !this.failed; },
+    pickVoice() {
+      if (!this.available) return;
+      let vs = [];
+      try { vs = speechSynthesis.getVoices() || []; } catch (e) { return; }
+      if (!vs.length) return;
+      // Android reports "en_GB" as often as "en-GB", and casing varies.
+      const norm = v => String(v.lang || "").toLowerCase().replace(/_/g, "-");
+      // HARD FILTER: only ever consider English voices. Picking the top of an
+      // unfiltered list is how a French voice ends up reading English words.
+      const english = vs.filter(v => norm(v).startsWith("en") ||
+        /english|united kingdom|ireland|irish|british/i.test(v.name || ""));
+      if (!english.length) {
+        // No English voice at all: leave voice null and let the engine choose
+        // via utterance.lang rather than forcing a foreign-accent voice.
+        this.voice = null;
+        this.status = "no English voice installed";
+        return;
+      }
+      const score = v => {
+        const l = norm(v), n = String(v.name || "");
+        if (l.startsWith("en-ie")) return 6;
+        if (l.startsWith("en-gb")) return 5;
+        if (/ireland|irish/i.test(n)) return 4;
+        if (/united kingdom|british/i.test(n)) return 3;
+        if (l.startsWith("en-au") || l.startsWith("en-nz")) return 2; // closer than US
+        if (l.startsWith("en")) return 1;
+        return 0;
+      };
+      this.voice = english.slice().sort((a, b) => score(b) - score(a))[0] || null;
+    },
+    init() {
+      if (!this.available || this.tried) return;
+      this.tried = true;
+      this.pickVoice();
+      // warm up the engine inside the user gesture (Android/Chrome)
+      try {
+        const u = new SpeechSynthesisUtterance(" ");
+        u.volume = 0; speechSynthesis.speak(u);
+      } catch (e) { }
+    },
+    speak(word) {
+      if (!this.on || !word) return;
+      if (!this.available) { this.status = "no speechSynthesis in this browser"; return; }
+      if (!this.voice) this.pickVoice();   // voices frequently load after boot
+      try {
+        // Must run SYNCHRONOUSLY inside the user gesture: Android Chrome
+        // ignores speak() calls deferred by setTimeout out of user activation.
+        if (speechSynthesis.speaking || speechSynthesis.pending) speechSynthesis.cancel();
+        speechSynthesis.resume(); // un-stick paused engines (Android quirk)
+        const u = new SpeechSynthesisUtterance(word);
+        if (this.voice) u.voice = this.voice;
+        u.lang = (this.voice && this.voice.lang) || "en-GB";
+        u.rate = 0.92; u.pitch = 1.0; u.volume = 1;
+        u.onstart = () => { this.spoke = true; this.failed = false; this.status = "speaking"; };
+        u.onerror = (ev) => {
+          const err = (ev && ev.error) || "error";
+          if (err === "interrupted" || err === "canceled") return;
+          this.status = "error: " + err;
+          if (!this.spoke) this.failed = true;
+        };
+        this.attempts++;
+        speechSynthesis.speak(u);
+      } catch (e) {
+        this.failed = true;
+        this.status = "threw: " + (e && e.message);
+      }
+    },
+    diagnose() {
+      if (!this.available) return "speechSynthesis missing (in-app browser?)";
+      let n = 0;
+      try { n = speechSynthesis.getVoices().length; } catch (e) { }
+      const v = this.voice
+        ? (this.voice.name || "?") + " (" + (this.voice.lang || "?") + ")"
+        : "engine default (en-GB)";
+      return "Voice: " + v + " · " + n + " installed";
+    }
+  };
+  // Kick voice loading immediately — in Chrome the first getVoices() call
+  // is what starts the async load, so by the first tap they exist.
+  if ("speechSynthesis" in window) {
+    try {
+      speechSynthesis.addEventListener("voiceschanged", () => TTS.pickVoice());
+      TTS.pickVoice();
+    } catch (e) { }
+  }
+
+  // ---------------- Canvas & view ------------------------------
+  let cv, cx, S = 1, OX = 0, OY = 0, DEVW = 0, DEVH = 0;
+  function resize() {
+    const dpr = Math.min(window.devicePixelRatio || 1, 3);
+    DEVW = Math.floor(innerWidth * dpr); DEVH = Math.floor(innerHeight * dpr);
+    cv.width = DEVW; cv.height = DEVH;
+    cv.style.width = innerWidth + "px"; cv.style.height = innerHeight + "px";
+    S = Math.min(DEVW / W, DEVH / H);
+    OX = (DEVW - W * S) / 2; OY = (DEVH - H * S) / 2;
+  }
+  function toLogical(e) {
+    const dpr = Math.min(window.devicePixelRatio || 1, 3);
+    return { x: (e.clientX * dpr - OX) / S, y: (e.clientY * dpr - OY) / S };
+  }
+
+  // ---------------- Particles & FX ----------------------------
+  const parts = [];       // generic particles
+  const coinsFly = [];    // vacuuming coins
+  const butterflies = []; // word-rescue set pieces
+  let zapLine = null, shakeT = 0, shakeMag = 0, dimT = 0;
+
+  function spSparkle(x, y, col, n, spd) {
+    for (let i = 0; i < (n || 10); i++) {
+      const a = rnd() * Math.PI * 2, v = (spd || 90) * (0.4 + rnd() * 0.8);
+      parts.push({ k: "sp", x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 40, t: 0, life: 0.5 + rnd() * 0.4, col, r: 2 + rnd() * 3 });
+    }
+  }
+  function spConfetti(n) {
+    for (let i = 0; i < n; i++) {
+      parts.push({
+        k: "cf", x: rnd() * W, y: -20 - rnd() * 120,
+        vx: (rnd() - 0.5) * 60, vy: 90 + rnd() * 120, rot: rnd() * 6, vr: (rnd() - 0.5) * 8,
+        t: 0, life: 2.4 + rnd(), col: [PAL.gold, PAL.mint, PAL.heart, "#c9a6ff", "#fff"][i % 5], r: 4 + rnd() * 4
+      });
+    }
+  }
+  function spInk(x, y, n) {
+    for (let i = 0; i < (n || 8); i++) {
+      const a = rnd() * Math.PI * 2, v = 70 * (0.3 + rnd());
+      parts.push({ k: "ink", x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, t: 0, life: 0.5 + rnd() * 0.3, col: PAL.blotHi, r: 3 + rnd() * 5 });
+    }
+  }
+  function spCoins(x, y, n) {
+    for (let i = 0; i < n; i++) {
+      const a = -Math.PI / 2 + (rnd() - 0.5) * 2.2, v = 140 * (0.5 + rnd() * 0.8);
+      coinsFly.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, t: 0, hover: 0.30 + rnd() * 0.2, arrived: false });
+    }
+  }
+  function spButterfly(word, x, y) {
+    butterflies.push({ word, x, y, t: 0, phase: 0, lx: x, ly: y });
+  }
+  function shake(mag) { shakeT = 0.25; shakeMag = mag; }
+
+  function updateFX(dt) {
+    for (let i = parts.length - 1; i >= 0; i--) {
+      const p = parts[i]; p.t += dt;
+      p.x += p.vx * dt; p.y += p.vy * dt;
+      if (p.k === "sp" || p.k === "ink") p.vy += 160 * dt;
+      if (p.k === "cf") { p.rot += p.vr * dt; p.vx += Math.sin(p.t * 6 + p.y) * 10 * dt; }
+      if (p.t > p.life || p.y > H + 40) parts.splice(i, 1);
+    }
+    const tgt = { x: W - 52, y: 46 };
+    for (let i = coinsFly.length - 1; i >= 0; i--) {
+      const c = coinsFly[i]; c.t += dt;
+      if (c.t < c.hover) { c.x += c.vx * dt; c.y += c.vy * dt; c.vy += 300 * dt; }
+      else {
+        const k = 1 - Math.pow(0.0007, dt); // exponential chase
+        c.x = lerp(c.x, tgt.x, k * 1.6); c.y = lerp(c.y, tgt.y, k * 1.6);
+        if (Math.abs(c.x - tgt.x) < 10 && Math.abs(c.y - tgt.y) < 10) {
+          coinsFly.splice(i, 1);
+          G.dispCoins = Math.min(G.dispCoins + 1, targetCoins());
+          if (coinsFly.length % 3 === 0) Audio2.play("coin");
+          continue;
+        }
+      }
+    }
+    for (let i = butterflies.length - 1; i >= 0; i--) {
+      const b = butterflies[i]; b.t += dt;
+      if (b.t > 2.4) butterflies.splice(i, 1);
+    }
+    if (zapLine) { zapLine.t -= dt; if (zapLine.t <= 0) zapLine = null; }
+    if (shakeT > 0) shakeT -= dt;
+  }
+
+  function drawFX() {
+    for (const p of parts) {
+      const a = 1 - p.t / p.life;
+      cx.globalAlpha = clamp(a, 0, 1);
+      cx.fillStyle = p.col;
+      if (p.k === "cf") {
+        cx.save(); cx.translate(p.x, p.y); cx.rotate(p.rot);
+        cx.fillRect(-p.r / 2, -p.r / 2, p.r, p.r); cx.restore();
+      } else {
+        cx.beginPath(); cx.arc(p.x, p.y, p.r * (p.k === "ink" ? a : 1), 0, 7); cx.fill();
+      }
+    }
+    cx.globalAlpha = 1;
+    for (const c of coinsFly) drawCoin(c.x, c.y, 9);
+    for (const b of butterflies) drawButterfly(b);
+    if (zapLine) {
+      cx.strokeStyle = PAL.mint; cx.lineWidth = 3.5; cx.globalAlpha = zapLine.t / 0.15;
+      cx.beginPath();
+      const { x1, y1, x2, y2 } = zapLine;
+      cx.moveTo(x1, y1);
+      const segs = 5;
+      for (let i = 1; i <= segs; i++) {
+        const t = i / segs;
+        cx.lineTo(lerp(x1, x2, t) + (i < segs ? (rnd() - 0.5) * 22 : 0), lerp(y1, y2, t) + (i < segs ? (rnd() - 0.5) * 22 : 0));
+      }
+      cx.stroke(); cx.globalAlpha = 1;
+    }
+  }
+
+  function drawButterfly(b) {
+    // phase 1: word glows upward; phase 2: butterfly flutters away
+    const p1 = 0.9;
+    if (b.t < p1) {
+      const t = easeOut(b.t / p1);
+      const y = lerp(b.y, b.y - 90, t);
+      cx.font = F(30, 800);
+      cx.textAlign = "center"; cx.textBaseline = "middle";
+      cx.globalAlpha = 0.9;
+      cx.shadowColor = PAL.gold; cx.shadowBlur = 18 * t;
+      cx.fillStyle = "#fff8e6";
+      cx.fillText(b.word, b.x, y);
+      cx.shadowBlur = 0; cx.globalAlpha = 1;
+      b.lx = b.x; b.ly = y;
+    } else {
+      const t = (b.t - p1) / 1.5;
+      const x = b.lx + t * 150 + Math.sin(t * 9) * 14;
+      const y = b.ly - t * 240;
+      const flap = Math.sin(b.t * 22) * 0.9;
+      cx.save(); cx.translate(x, y); cx.globalAlpha = clamp(1.2 - t, 0, 1);
+      cx.fillStyle = PAL.parch;
+      cx.save(); cx.rotate(-0.3 - flap * 0.5);
+      cx.beginPath(); cx.ellipse(-9, 0, 11, 7, 0, 0, 7); cx.fill(); cx.restore();
+      cx.save(); cx.rotate(0.3 + flap * 0.5);
+      cx.beginPath(); cx.ellipse(9, 0, 11, 7, 0, 0, 7); cx.fill(); cx.restore();
+      cx.fillStyle = PAL.ink;
+      cx.fillRect(-1.5, -7, 3, 14);
+      cx.restore(); cx.globalAlpha = 1;
+    }
+  }
+
+  // ---------------- Drawing helpers ----------------------------
+  function drawCoin(x, y, r) {
+    cx.fillStyle = PAL.goldDeep;
+    cx.beginPath(); cx.arc(x, y + 1.5, r, 0, 7); cx.fill();
+    cx.fillStyle = PAL.gold;
+    cx.beginPath(); cx.arc(x, y, r, 0, 7); cx.fill();
+    cx.fillStyle = PAL.goldDeep;
+    cx.font = F(r * 1.2, 800); cx.textAlign = "center"; cx.textBaseline = "middle";
+    cx.fillText("¢".replace("¢", "✶"), x, y + 0.5);
+  }
+  function drawHeart(x, y, r, on) {
+    cx.save(); cx.translate(x, y); cx.scale(r / 10, r / 10);
+    cx.beginPath();
+    cx.moveTo(0, 3);
+    cx.bezierCurveTo(0, 0, -4, -3, -7, -1);
+    cx.bezierCurveTo(-11, 2, -6, 8, 0, 12);
+    cx.bezierCurveTo(6, 8, 11, 2, 7, -1);
+    cx.bezierCurveTo(4, -3, 0, 0, 0, 3);
+    cx.closePath();
+    cx.fillStyle = on ? PAL.heart : "rgba(255,255,255,0.16)";
+    cx.fill();
+    if (on) { cx.fillStyle = "rgba(255,255,255,0.5)"; cx.beginPath(); cx.arc(-3, 1, 2.2, 0, 7); cx.fill(); }
+    cx.restore();
+  }
+  function panel(x, y, w, h, r) {
+    cx.fillStyle = "rgba(0,0,0,0.25)";
+    rr(cx, x + 3, y + 5, w, h, r || 18); cx.fill();
+    cx.fillStyle = PAL.parch;
+    rr(cx, x, y, w, h, r || 18); cx.fill();
+    cx.strokeStyle = PAL.parchShade; cx.lineWidth = 2;
+    rr(cx, x + 4, y + 4, w - 8, h - 8, (r || 18) - 4); cx.stroke();
+  }
+  const hits = [];
+  function button(x, y, w, h, label, fn, opts) {
+    opts = opts || {};
+    const base = opts.danger ? "#c4707c" : opts.gold ? PAL.gold : PAL.parch;
+    const down = G.pressId === (opts.id || label);
+    cx.fillStyle = "rgba(0,0,0,0.3)";
+    rr(cx, x + 2, y + 4, w, h, 16); cx.fill();
+    cx.fillStyle = down ? (opts.danger ? "#a85a66" : PAL.goldDeep) : base;
+    rr(cx, x, y + (down ? 2 : 0), w, h, 16); cx.fill();
+    cx.fillStyle = PAL.ink;
+    const px = fitFont(cx, label, w - 24, opts.px || 24, 800);
+    cx.textAlign = "center"; cx.textBaseline = "middle";
+    cx.fillText(label, x + w / 2, y + h / 2 + (down ? 2 : 0) + 1);
+    hits.push({ x, y, w, h, fn, id: opts.id || label });
+  }
+  function iconButton(x, y, r, glyph, fn, id) {
+    cx.fillStyle = "rgba(0,0,0,0.35)";
+    cx.beginPath(); cx.arc(x, y, r, 0, 7); cx.fill();
+    cx.fillStyle = "rgba(255,255,255,0.9)";
+    cx.font = F(r * 1.1, 600); cx.textAlign = "center"; cx.textBaseline = "middle";
+    cx.fillText(glyph, x, y + 1);
+    hits.push({ x: x - r, y: y - r, w: r * 2, h: r * 2, fn, id });
+  }
+
+  // eq: equipped map {hat, cape, wand, pet} — pass null for a bare wizard
+  function drawWizard(x, y, sc, colour, pose, eq) {
+    const t = G.time;
+    const bob = Math.sin(t * 2.2) * 3 * sc;
+    const E = eq || {};
+    const item = id => (id && DATA.SHOP_INDEX[id]) || null;
+    const hat = item(E.hat), cape = item(E.cape), wand = item(E.wand);
+    cx.save(); cx.translate(x, y + bob); cx.scale(sc, sc);
+    // shadow
+    cx.fillStyle = "rgba(0,0,0,0.3)";
+    cx.beginPath(); cx.ellipse(0, 46, 30, 8, 0, 0, 7); cx.fill();
+    // cape (behind everything)
+    if (cape) {
+      const sway = Math.sin(t * 2.4) * 4;
+      cx.fillStyle = cape.c;
+      cx.beginPath();
+      cx.moveTo(-14, -10);
+      cx.quadraticCurveTo(-34 + sway, 16, -26 + sway, 46);
+      cx.lineTo(26 + sway, 46);
+      cx.quadraticCurveTo(34 + sway, 16, 14, -10);
+      cx.closePath(); cx.fill();
+      cx.fillStyle = "rgba(0,0,0,0.18)";
+      cx.beginPath();
+      cx.moveTo(0, -10); cx.lineTo(10 + sway, 46); cx.lineTo(-10 + sway, 46);
+      cx.closePath(); cx.fill();
+    }
+    // robe
+    cx.fillStyle = colour;
+    cx.beginPath();
+    cx.moveTo(-24, 44); cx.quadraticCurveTo(-30, 2, -12, -8);
+    cx.lineTo(12, -8); cx.quadraticCurveTo(30, 2, 24, 44);
+    cx.closePath(); cx.fill();
+    cx.fillStyle = "rgba(0,0,0,0.15)";
+    cx.beginPath(); cx.moveTo(0, -6); cx.lineTo(10, 44); cx.lineTo(-10, 44); cx.closePath(); cx.fill();
+    // face
+    cx.fillStyle = "#ffd9b8";
+    cx.beginPath(); cx.arc(0, -18, 14, 0, 7); cx.fill();
+    cx.fillStyle = PAL.ink;
+    cx.beginPath(); cx.arc(-5, -19, 1.8, 0, 7); cx.arc(6, -19, 1.8, 0, 7); cx.fill();
+    cx.strokeStyle = PAL.ink; cx.lineWidth = 1.6;
+    cx.beginPath(); cx.arc(0.5, -14, 4, 0.15 * Math.PI, 0.85 * Math.PI); cx.stroke();
+    // headgear
+    drawHeadgear(hat, colour);
+    // wand arm
+    const raise = pose === "zap" ? -0.9 : Math.sin(t * 2.2) * 0.06;
+    cx.save(); cx.translate(18, -2); cx.rotate(-0.5 + raise);
+    cx.strokeStyle = wand && wand.id === "wand_bolt" ? "#c8a83a" : "#8a6b4a";
+    cx.lineWidth = 4; cx.lineCap = "round";
+    cx.beginPath(); cx.moveTo(0, 0); cx.lineTo(26, -10); cx.stroke();
+    const tipC = wand ? wand.c : PAL.mint;
+    cx.save();
+    cx.shadowColor = tipC; cx.shadowBlur = 10;
+    cx.fillStyle = tipC; star(29, -12, 6);
+    cx.restore();
+    // wand trail sparkles
+    if (wand && Math.random() < 0.25) {
+      const gx = x + (29 * sc), gy = y + (-12 * sc) + bob;
+      spSparkle(gx + (Math.random() - 0.5) * 10, gy + (Math.random() - 0.5) * 10, tipC, 1, 30);
+    }
+    cx.restore();
+    cx.restore();
+    if (E.pet) drawPet(x, y, sc, E.pet);
+  }
+
+  // Hats, in the girls' preferred register: adventurous, not frilly
+  function drawHeadgear(hat, colour) {
+    const c = hat ? hat.c : colour;
+    const id = hat ? hat.id : "wizard";
+    if (id === "goggles") {
+      cx.fillStyle = "#6b5238";
+      rr(cx, -16, -30, 32, 8, 3); cx.fill();
+      cx.fillStyle = c;
+      cx.beginPath(); cx.arc(-8, -26, 7, 0, 7); cx.arc(8, -26, 7, 0, 7); cx.fill();
+      cx.fillStyle = "rgba(255,255,255,0.55)";
+      cx.beginPath(); cx.arc(-10, -28, 2.4, 0, 7); cx.arc(6, -28, 2.4, 0, 7); cx.fill();
+      return;
+    }
+    if (id === "horns") {
+      cx.fillStyle = c;
+      cx.beginPath(); cx.ellipse(0, -28, 20, 7, 0, 0, 7); cx.fill();
+      cx.beginPath();
+      cx.moveTo(-16, -30); cx.quadraticCurveTo(-26, -44, -12, -50);
+      cx.quadraticCurveTo(-16, -40, -8, -32); cx.closePath(); cx.fill();
+      cx.beginPath();
+      cx.moveTo(16, -30); cx.quadraticCurveTo(26, -44, 12, -50);
+      cx.quadraticCurveTo(16, -40, 8, -32); cx.closePath(); cx.fill();
+      return;
+    }
+    if (id === "helm") {
+      cx.fillStyle = c;
+      cx.beginPath(); cx.arc(0, -26, 16, Math.PI, 0); cx.fill();
+      rr(cx, -16, -27, 32, 8, 2); cx.fill();
+      cx.fillStyle = "#d95763";
+      rr(cx, -2, -48, 4, 18, 2); cx.fill();
+      cx.beginPath(); cx.arc(0, -48, 5, 0, 7); cx.fill();
+      return;
+    }
+    if (id === "ears") {
+      cx.fillStyle = c;
+      cx.beginPath(); cx.moveTo(-14, -26); cx.lineTo(-9, -42); cx.lineTo(-2, -28); cx.closePath(); cx.fill();
+      cx.beginPath(); cx.moveTo(14, -26); cx.lineTo(9, -42); cx.lineTo(2, -28); cx.closePath(); cx.fill();
+      cx.fillStyle = "#ff9db0";
+      cx.beginPath(); cx.moveTo(-11, -29); cx.lineTo(-9, -37); cx.lineTo(-5, -30); cx.closePath(); cx.fill();
+      cx.beginPath(); cx.moveTo(11, -29); cx.lineTo(9, -37); cx.lineTo(5, -30); cx.closePath(); cx.fill();
+      return;
+    }
+    // classic pointy wizard hat (default + colour variants)
+    cx.fillStyle = c;
+    cx.beginPath(); cx.ellipse(0, -28, 22, 6, 0, 0, 7); cx.fill();
+    cx.beginPath(); cx.moveTo(-13, -29); cx.quadraticCurveTo(2, -66, 10, -58);
+    cx.quadraticCurveTo(8, -44, 13, -29); cx.closePath(); cx.fill();
+    cx.fillStyle = PAL.gold;
+    star(2, -50, 5);
+  }
+
+  // The pet trots along beside its wizard
+  function drawPet(x, y, sc, petId) {
+    const pet = DATA.SHOP_INDEX[petId];
+    if (!pet) return;
+    const t = G.time;
+    const px = x - 42 * sc + Math.sin(t * 1.6) * 4 * sc;
+    const py = y + 30 * sc + Math.sin(t * 3.1) * 3 * sc;
+    cx.save();
+    cx.translate(px, py);
+    cx.scale(sc * 0.9, sc * 0.9);
+    cx.fillStyle = "rgba(0,0,0,0.25)";
+    cx.beginPath(); cx.ellipse(0, 14, 12, 4, 0, 0, 7); cx.fill();
+    cx.font = F(26, 700); cx.textAlign = "center"; cx.textBaseline = "middle";
+    cx.fillText(pet.icon, 0, 0);
+    cx.restore();
+  }
+  function star(x, y, r) {
+    cx.save(); cx.translate(x, y); cx.beginPath();
+    for (let i = 0; i < 10; i++) {
+      const a = i * Math.PI / 5 - Math.PI / 2, rad = i % 2 ? r * 0.45 : r;
+      cx.lineTo(Math.cos(a) * rad, Math.sin(a) * rad);
+    }
+    cx.closePath(); cx.fill(); cx.restore();
+  }
+
+  function blotXY(b) {
+    const x = b.lane * W;
+    const y = FIELD_TOP + clamp(b.progress, -0.2, 1) * (FIELD_BOT - FIELD_TOP);
+    return { x, y };
+  }
+  function drawBlot(b, i, big) {
+    const { x, y } = blotXY(b);
+    const t = G.time * (2.2 + b.seed);
+    const squish = 1 + Math.sin(t * 2.6 + b.seed * 9) * 0.06;
+    let sc = big ? 1.7 : 1;
+    if (!b.alive) {
+      b._deathT = (b._deathT || 0) + G.dt;
+      sc *= Math.max(0, 1 - b._deathT * 4);
+      if (sc <= 0) return;
+    }
+    const wob = b.wrongAt > 0 ? Math.sin(G.time * 40) * 4 * b.wrongAt : 0;
+    cx.save(); cx.translate(x + wob, y);
+    cx.scale(sc * squish, sc / squish);
+    // body
+    cx.fillStyle = b.wrongAt > 0.3 ? "#5a2440" : PAL.blot;
+    cx.beginPath(); cx.ellipse(0, 0, 46, 38, 0, 0, 7); cx.fill();
+    // drips
+    cx.beginPath(); cx.ellipse(-26, 22, 9, 12, 0.4, 0, 7); cx.ellipse(24, 24, 7, 10, -0.4, 0, 7); cx.fill();
+    cx.fillStyle = PAL.blotHi;
+    cx.beginPath(); cx.ellipse(-14, -14, 14, 10, -0.5, 0, 7); cx.fill();
+    // eyes (blink on seed timer)
+    const blink = (Math.sin(G.time * 0.9 + b.seed * 20) > 0.97);
+    cx.fillStyle = "#fff";
+    if (blink) { cx.fillRect(-20, -6, 14, 3); cx.fillRect(6, -6, 14, 3); }
+    else {
+      cx.beginPath(); cx.arc(-13, -5, 8, 0, 7); cx.arc(13, -5, 8, 0, 7); cx.fill();
+      cx.fillStyle = PAL.ink;
+      const dx = clamp((W / 2 - x) / 220, -3, 3);
+      cx.beginPath(); cx.arc(-13 + dx, -3, 3.6, 0, 7); cx.arc(13 + dx, -3, 3.6, 0, 7); cx.fill();
+    }
+    cx.restore();
+    // word pill
+    if (b.alive && b.word) {
+      cx.save(); cx.translate(x + wob, y + 4);
+      const padW = 116;
+      cx.fillStyle = "rgba(0,0,0,0.25)"; rr(cx, -padW / 2 + 2, 14, padW, 38, 14); cx.fill();
+      cx.fillStyle = PAL.parch; rr(cx, -padW / 2, 12, padW, 38, 14); cx.fill();
+      cx.fillStyle = PAL.ink;
+      fitFont(cx, b.word, padW - 16, 27, 800);
+      cx.textAlign = "center"; cx.textBaseline = "middle";
+      cx.fillText(b.word, 0, 32);
+      cx.restore();
+      hits.push({ x: x - 62, y: y - 46, w: 124, h: 104, fn: () => G.run && G.run.tapBlot(i), id: "blot" + i });
+    }
+  }
+
+  // ---------------- Backgrounds --------------------------------
+  const fireflies = [];
+  for (let i = 0; i < 12; i++) fireflies.push({ x: rnd() * W, y: 150 + rnd() * 550, s: rnd() * 6.28, sp: 0.3 + rnd() * 0.5 });
+  function drawTowerBG(kind) {
+    const g = cx.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, PAL.bgTop); g.addColorStop(1, PAL.bgBot);
+    cx.fillStyle = g; cx.fillRect(-200, -200, W + 400, H + 400);
+    // stone side pillars
+    cx.fillStyle = "rgba(74,58,122,0.35)";
+    cx.fillRect(-200, 0, 218, H); cx.fillRect(W - 18, 0, 218, H);
+    // arched window with stars
+    cx.fillStyle = "#120b24";
+    rr(cx, W / 2 - 70, 60, 140, 120, 60); cx.fill();
+    cx.fillStyle = "#fff";
+    for (let i = 0; i < 8; i++) {
+      cx.globalAlpha = 0.4 + 0.4 * Math.sin(G.time * 2 + i * 2);
+      cx.beginPath(); cx.arc(W / 2 - 50 + (i * 37) % 100, 85 + (i * 53) % 80, 1.6, 0, 7); cx.fill();
+    }
+    cx.globalAlpha = 1;
+    // floor line
+    cx.fillStyle = "rgba(0,0,0,0.35)";
+    cx.fillRect(-200, WIZ_Y + 40, W + 400, H);
+    // lantern glow for cosy rooms
+    if (kind === "rest" || kind === "treasure") {
+      const rg = cx.createRadialGradient(W / 2, 430, 30, W / 2, 430, 320);
+      rg.addColorStop(0, "rgba(255,207,107,0.22)"); rg.addColorStop(1, "rgba(255,207,107,0)");
+      cx.fillStyle = rg; cx.fillRect(0, 0, W, H);
+    }
+    for (const f of fireflies) {
+      f.s += G.dt * f.sp;
+      const fx = f.x + Math.sin(f.s) * 30, fy = f.y + Math.cos(f.s * 0.7) * 20;
+      cx.globalAlpha = 0.35 + 0.3 * Math.sin(f.s * 3);
+      cx.fillStyle = PAL.gold;
+      cx.beginPath(); cx.arc(fx, fy, 2, 0, 7); cx.fill();
+    }
+    cx.globalAlpha = 1;
+  }
+  function drawHubBG() {
+    const g = cx.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, "#3a2a58"); g.addColorStop(1, "#241a3d");
+    cx.fillStyle = g; cx.fillRect(-200, -200, W + 400, H + 400);
+    // warm lamp glow
+    const rg = cx.createRadialGradient(W / 2, 300, 40, W / 2, 300, 420);
+    rg.addColorStop(0, "rgba(255,207,107,0.30)"); rg.addColorStop(1, "rgba(255,207,107,0)");
+    cx.fillStyle = rg; cx.fillRect(-200, -200, W + 400, H + 400);
+    // shelves
+    for (let s = 0; s < 2; s++) {
+      const sy = 150 + s * 105;
+      cx.fillStyle = "#54406e"; cx.fillRect(24, sy + 58, W - 48, 12);
+      for (let i = 0; i < 12; i++) {
+        cx.fillStyle = ["#c05a5a", "#5a8ac0", "#c0a05a", "#6ab08a", "#9a6ac0"][(i + s) % 5];
+        const bh = 40 + ((i * 13 + s * 7) % 16);
+        cx.fillRect(30 + i * ((W - 60) / 12), sy + 58 - bh, 18, bh);
+      }
+    }
+    cx.fillStyle = "rgba(0,0,0,0.35)";
+    cx.fillRect(-200, 700, W + 400, H);
+  }
+
+  // ---------------- Game state ---------------------------------
+  const G = {
+    screen: "title", time: 0, dt: 0,
+    save: null, profile: null,
+    run: null, runOver: null, preBest: 0,
+    dispCoins: 0, pressId: null,
+    banner: null, // {text, t}
+    nameDraft: "", colourDraft: "teal",
+    reveal: null, // spell reveal {word,t} — shown then hidden
+    spellShown: null, // word currently loaded into the tiles
+    toast: null,
+    indexObj: null,
+    stormPulse: 0
+  };
+  function targetCoins() { return (G.profile ? G.profile.coins : 0); }
+  function toast(msg) { G.toast = { msg, t: 2.2 }; }
+
+  function setScreen(s) {
+    if (s !== "shop" && s !== "bookshelf" && s !== "grownups") { G.scrollView = null; G.scrollVel = 0; G.drag = null; }
+    G.screen = s; hits.length = 0;
+  }
+
+  // ---------------- Run event plumbing --------------------------
+  function bankCoins(n, x, y) {
+    if (!n) return;
+    G.profile.coins += n;
+    spCoins(x, y, clamp(Math.round(n / 2), 3, 14));
+  }
+  function handleRunEvents() {
+    const evs = G.run.drainEvents();
+    const R = G.run.snapshot();
+    for (const e of evs) {
+      switch (e.t) {
+        case "floorStart": {
+          const names = { battle: "Battle", challenge: "Challenge ⭐", treasure: "Treasure", rest: "Rest", boss: "Boss" };
+          G.banner = { text: `Floor ${e.floor} — ${names[e.kind] || ""}`, t: 1.4 };
+          if (e.kind === "challenge") toast("Harder words, double coins!");
+          break;
+        }
+        case "speak": {
+          TTS.speak(e.word);   // enhancement only — never the sole channel
+          break;
+        }
+        case "wrong": {
+          // the surge: everything lurches closer, guessing costs runway
+          Audio2.play("wrong"); shake(6); vib(25);
+          toast("Careful! They crept closer");
+          break;
+        }
+        case "shieldUsed": {
+          Audio2.play("fanfare"); spSparkle(W / 2, 200, PAL.mint, 18, 90);
+          toast("🛡️ Second chance! Saved you");
+          break;
+        }
+        case "owl": {
+          toast(`🦉 The owl says it starts with "${e.ch}"`);
+          break;
+        }
+        case "dragonet": {
+          toast(`🐉 Dragonet burned away the "${e.ch}"`);
+          Audio2.play("zap");
+          break;
+        }
+        case "storyPage": { toast("📖 You found a story page!"); break; }
+        case "bought": {
+          Audio2.play("fanfare"); spSparkle(W / 2, 420, PAL.gold, 22, 100);
+          toast(`${e.label}!`);
+          break;
+        }
+        case "tooPoor": {
+          Audio2.play("wrong");
+          toast(`Not enough coins — needs ${e.price}`);
+          break;
+        }
+        case "skip": {
+          toast(`⏭️ Skipped "${e.word}"`);
+          Audio2.play("tick");
+          break;
+        }
+        case "rhymeStart": { G.banner = { text: "Rhyme Time!", t: 1.2 }; break; }
+        case "rhymeHit": {
+          Audio2.play("zap"); spSparkle(W / 2, 300, PAL.mint, 12, 90); vib(8);
+          if (e.left === 0) { Audio2.play("fanfare"); spConfetti(24); }
+          break;
+        }
+        case "rhymeMiss": { Audio2.play("wrong"); shake(5); vib(20); toast(`"${e.word}" doesn't rhyme`); break; }
+        case "puzzleMiss": { break; }   // coins shrink; handled by the mode's own toast
+        case "oddStart": { G.banner = { text: "Odd One Out!", t: 1.2 }; break; }
+        case "oddHit": { Audio2.play("fanfare"); spConfetti(26); vib(10); break; }
+        case "oddMiss": { Audio2.play("wrong"); shake(6); vib(25); toast(`"${e.word}" fits the group`); break; }
+        case "sentenceStart": { G.banner = { text: "Sentence Gate!", t: 1.2 }; break; }
+        case "sentenceHit": { Audio2.play("fanfare"); spConfetti(26); vib(10); break; }
+        case "sentenceMiss": { Audio2.play("wrong"); shake(6); vib(25); toast("That doesn't fit — try again"); break; }
+        case "flashStart": { G.banner = { text: "Speedy Flash!", t: 1.0 }; break; }
+        case "flashHide": { Audio2.play("tick"); break; }
+        case "flashHit": { Audio2.play("fanfare"); spConfetti(24); vib(10); break; }
+        case "flashMiss": { Audio2.play("wrong"); shake(6); vib(25); toast(`It was not "${e.word}"`); break; }
+        case "reviewWin": {
+          Audio2.play("fanfare"); spSparkle(W / 2, 300, PAL.gold, 20, 110);
+          toast(`You caught a tricky word! +${e.coins}`);
+          break;
+        }
+        case "spellWord": {
+          // Fires exactly when new tiles are installed — safe to swap display.
+          G.spellShown = e.word;
+          // Always show the word first, then hide it. TTS is a bonus on top.
+          G.reveal = { word: e.word, t: 1.2 };
+          break;
+        }
+        case "zap": {
+          const b = R.blots[e.idx];
+          if (b) {
+            const { x, y } = blotXY(b);
+            zapLine = { x1: W / 2 + 30, y1: WIZ_Y - 20, x2: x, y2: y, t: 0.15 };
+            spSparkle(x, y, PAL.mint, 14);
+            spButterfly(e.word, x, y);
+            bankCoins(e.coins, x, y);
+          }
+          G.wizPose = 0.3;
+          Audio2.play("zap"); setTimeout(() => Audio2.play("pop"), 60);
+          if (e.streak >= 2) Audio2.play("streak", { n: clamp(e.streak - 2, 0, 4) });
+          vib(8);
+          break;
+        }
+        case "wrong": Audio2.play("wrong"); vib([15, 30, 15]); break;
+        case "reach": {
+          spInk(W / 2, WIZ_Y - 30, 14); shake(6);
+          Audio2.play("heart"); vib(60);
+          break;
+        }
+        case "stormReady": Audio2.play("chargeUp"); G.stormPulse = 1; break;
+        case "storm": {
+          dimT = 0.35;
+          for (const b of R.blots) { const p = blotXY(b); spSparkle(p.x, p.y, "#fff", 12); }
+          bankCoins(e.coins, W / 2, 400);
+          spConfetti(24);
+          Audio2.play("storm"); vib([20, 40, 20, 40, 20]);
+          break;
+        }
+        case "tileTap": Audio2.play("tick"); vib(6); break;
+        case "backspace": Audio2.play("tickLow"); break;
+        case "spellFail": Audio2.play("wrong"); G.spellShake = 0.4; vib([15, 30, 15]); break;
+        case "hintsOn": spSparkle(W / 2, 430, PAL.gold, 16); break;
+        case "spellSolve": {
+          spButterfly(e.word, W / 2, 420);
+          bankCoins(e.coins, W / 2, 430);
+          Audio2.play("zap"); setTimeout(() => Audio2.play("coin"), 80);
+          vib(10);
+          break;
+        }
+        case "bossStart": Audio2.play("boom"); shake(5); break;
+        case "bossHit": {
+          spSparkle(W / 2, 200, PAL.mint, 22); spConfetti(10);
+          Audio2.play("bossHit"); shake(4); vib(30);
+          break;
+        }
+        case "bossDown": {
+          spConfetti(70); bankCoins(e.coins, W / 2, 220);
+          Audio2.play("fanfare"); vib([30, 50, 30, 50, 60]);
+          toast("📖 A story page! Read it in the Bookshelf");
+          break;
+        }
+        case "floorClear": {
+          bankCoins(e.coins, W / 2, 380);
+          Audio2.play("fanfare");
+          break;
+        }
+        case "doors": Store.save(); break;
+        case "doorChosen": Audio2.play("door"); break;
+        case "treasure": {
+          bankCoins(e.coins, W / 2, 430);
+          Audio2.play("chest"); spSparkle(W / 2, 430, PAL.gold, 24); vib(20);
+          break;
+        }
+        case "rest": {
+          if (e.healed) { spSparkle(W / 2, WIZ_Y - 40, PAL.heart, 16); Audio2.play("heal"); }
+          else { bankCoins(e.coins, W / 2, 430); Audio2.play("coin"); }
+          break;
+        }
+        case "heartLost": break;
+        case "runEnd": finishRun(e.summary); break;
+      }
+    }
+  }
+
+  function startRun() {
+    G.preBest = G.profile.bestFloor;
+    G._chaptersBefore = chaptersUnlocked(G.profile);
+    G.run = L.createRun({
+      tier: G.profile.tier,
+      rngSeed: (Date.now() ^ (G.profile.coins * 2654435761)) >>> 0,
+      indexObj: G.indexObj,
+      mods: L.modsFor(G.profile),
+      pouch: (G.profile.reviewPouch || []).slice()
+    });
+    G.runOver = null;
+    setScreen("run");
+  }
+  function finishRun(sum) {
+    const p = G.profile;
+    p.runsPlayed++;
+    p.wordsFreed += sum.wordsFreed.length;
+    p.bestFloor = Math.max(p.bestFloor, sum.floor);
+    p.storyPages = (p.storyPages || 0) + (sum.storyPages || 0);
+    for (const a of sum.answers) L.recordAnswer(p, a.tier, !!a.ok);
+    for (const w of sum.wordLog || []) L.recordWordResult(p, w.word, w.ok);
+    // review pouch: words they missed go in, words they nailed come out
+    for (const w of sum.reviewPouch) L.pouchAdd(p, w, sum.floor);
+    for (const w of sum.pouchCleared || []) L.pouchClear(p, w);
+    // adaptive difficulty, invisible to the child
+    const adapt = L.adaptTier(p);
+    G.runOver = Object.assign({}, sum, {
+      tierMoved: adapt.moved,
+      newChapters: chaptersUnlocked(p) - (G._chaptersBefore || 0)
+    });
+    Store.save();
+    setTimeout(() => setScreen("result"), 700);
+  }
+  function chaptersUnlocked(p) {
+    return DATA.CHAPTERS.filter(c => c.pages <= (p.storyPages || 0)).length;
+  }
+
+  // ---------------- New mode renderers (M3) ----------------------
+  function bigCard(x, y, w, h, word, opts) {
+    const o = opts || {};
+    panel(x, y, w, h, 14);
+    cx.fillStyle = o.dim ? "rgba(46,35,56,0.35)" : PAL.ink;
+    cx.textAlign = "center"; cx.textBaseline = "middle";
+    cx.font = F(fitFont(cx, word, w - 24, o.size || 30, 900), 900);
+    drawSpaced(word, x + w / 2, y + h / 2, 1.6);
+  }
+
+  function renderRhyme(R) {
+    const r = R.rhyme;
+    cx.textAlign = "center"; cx.textBaseline = "middle";
+    cx.fillStyle = PAL.gold; cx.font = F(20, 900);
+    cx.fillText("Tap everything that rhymes with", W / 2, 128);
+    // the key word
+    panel(W / 2 - 110, 148, 220, 62, 18);
+    cx.fillStyle = PAL.ink; cx.font = F(34, 900);
+    drawSpaced(r.key, W / 2, 180, 2);
+    // speaker
+    iconButton(W - 52, 179, 22, "🔊", () => TTS.speak(r.key), "sayrhyme");
+    cx.fillStyle = "rgba(246,234,210,0.7)"; cx.font = F(15, 700);
+    const left = r.need - r.found;
+    cx.fillText(left > 0 ? `${left} more to find` : "All found!", W / 2, 232);
+
+    const cols = 2, cw = 152, ch = 76, gapx = 14, gapy = 14;
+    r.cards.forEach((c, i) => {
+      const col = i % cols, row = Math.floor(i / cols);
+      const x = (W - (cols * cw + (cols - 1) * gapx)) / 2 + col * (cw + gapx);
+      const y = 268 + row * (ch + gapy);
+      if (c.tapped) {
+        cx.globalAlpha = c.ok ? 0.45 : 0.3;
+        bigCard(x, y, cw, ch, c.word, { size: 26 });
+        cx.globalAlpha = 1;
+        cx.fillStyle = c.ok ? PAL.mint : PAL.heart;
+        cx.font = F(26, 900); cx.textAlign = "center";
+        cx.fillText(c.ok ? "✓" : "✗", x + cw - 20, y + 18);
+      } else {
+        bigCard(x, y, cw, ch, c.word, { size: 26 });
+        hits.push({ x, y, w: cw, h: ch, id: "rh" + i, fn: () => G.run.tapRhyme(i) });
+      }
+    });
+  }
+
+  function renderOdd(R) {
+    const o = R.odd;
+    cx.textAlign = "center"; cx.textBaseline = "middle";
+    cx.fillStyle = PAL.gold; cx.font = F(21, 900);
+    cx.fillText("Which one is the odd one out?", W / 2, 136);
+    cx.fillStyle = "rgba(246,234,210,0.75)"; cx.font = F(16, 700);
+    cx.fillText(`Three of these are ${o.category}`, W / 2, 166);
+    cx.fillStyle = "rgba(246,234,210,0.5)"; cx.font = F(13, 700);
+    cx.fillText(`${o.round} of ${o.total}`, W / 2, 190);
+
+    o.cards.forEach((c, i) => {
+      const y = 214 + i * 90, x = 44, w = W - 88, h = 74;
+      if (c.out) {
+        cx.globalAlpha = 0.3;
+        bigCard(x, y, w, h, c.word, { size: 28 });
+        cx.globalAlpha = 1;
+        cx.strokeStyle = PAL.heart; cx.lineWidth = 3; cx.lineCap = "round";
+        cx.beginPath(); cx.moveTo(x + 22, y + h / 2); cx.lineTo(x + w - 22, y + h / 2); cx.stroke();
+      } else {
+        bigCard(x, y, w, h, c.word, { size: 28 });
+        if (!o.done) hits.push({ x, y, w, h, id: "od" + i, fn: () => G.run.tapOdd(i) });
+      }
+    });
+  }
+
+  function renderSentence(R) {
+    const s2 = R.sentence;
+    cx.textAlign = "center"; cx.textBaseline = "middle";
+    cx.fillStyle = PAL.gold; cx.font = F(20, 900);
+    cx.fillText("Which word fits the gap?", W / 2, 128);
+
+    // the sentence, wrapped, on parchment
+    const words = s2.text.split(" ");
+    const lines = [];
+    let line = "";
+    cx.font = F(20, 800);
+    for (const w of words) {
+      const test = line ? line + " " + w : w;
+      if (cx.measureText(test).width > W - 110 && line) { lines.push(line); line = w; }
+      else line = test;
+    }
+    if (line) lines.push(line);
+    const ph = 30 + lines.length * 30;
+    panel(40, 158, W - 80, ph, 16);
+    cx.fillStyle = PAL.ink;
+    lines.forEach((l, i) => {
+      cx.font = F(20, 800);
+      cx.fillText(l, W / 2, 186 + i * 30);
+    });
+
+    cx.fillStyle = "rgba(246,234,210,0.5)"; cx.font = F(13, 700); cx.textAlign = "center";
+    cx.fillText(`${s2.round} of ${s2.total}`, W / 2, 150);
+
+    const top = 158 + ph + 26;
+    s2.options.forEach((opt, i) => {
+      const y = top + i * 84, x = 52, w = W - 104, h = 68;
+      const out = s2.out.includes(i);
+      if (out) {
+        cx.globalAlpha = 0.3;
+        bigCard(x, y, w, h, opt, { size: 26 });
+        cx.globalAlpha = 1;
+        cx.strokeStyle = PAL.heart; cx.lineWidth = 3;
+        cx.beginPath(); cx.moveTo(x + 22, y + h / 2); cx.lineTo(x + w - 22, y + h / 2); cx.stroke();
+      } else {
+        bigCard(x, y, w, h, opt, { size: 28 });
+        if (!s2.done) hits.push({ x, y, w, h, id: "se" + i, fn: () => G.run.tapSentence(i) });
+      }
+    });
+  }
+
+  function renderFlash(R) {
+    const f = R.flash;
+    cx.textAlign = "center"; cx.textBaseline = "middle";
+    cx.fillStyle = PAL.gold; cx.font = F(21, 900);
+    cx.fillText(f.shown ? "Quick — read it!" : "Which word was it?", W / 2, 132);
+
+    if (f.shown) {
+      const pulse = 1 + Math.sin(G.time * 8) * 0.02;
+      cx.save();
+      cx.translate(W / 2, 300); cx.scale(pulse, pulse); cx.translate(-W / 2, -300);
+      panel(W / 2 - 150, 262, 300, 76, 18);
+      cx.fillStyle = PAL.ink;
+      cx.font = F(fitFont(cx, f.word, 268, 38, 900), 900);
+      drawSpaced(f.word, W / 2, 300, 2);
+      cx.restore();
+      // a countdown bar, so it never feels like a trick
+      const frac = clamp((G.flashLeft || 0) / f.showFor, 0, 1);
+      cx.fillStyle = "rgba(246,234,210,0.2)";
+      rr(cx, W / 2 - 100, 356, 200, 10, 5); cx.fill();
+      cx.fillStyle = PAL.mint;
+      rr(cx, W / 2 - 100, 356, 200 * frac, 10, 5); cx.fill();
+    } else {
+      cx.fillStyle = "rgba(246,234,210,0.5)"; cx.font = F(13, 700); cx.textAlign = "center";
+      cx.fillText(`${f.round} of ${f.total}`, W / 2, 160);
+      f.options.forEach((opt, i) => {
+        const col = i % 2, row = Math.floor(i / 2);
+        const cw = 152, ch = 76;
+        const x = (W - (2 * cw + 14)) / 2 + col * (cw + 14);
+        const y = 250 + row * 90;
+        const out = f.out.includes(i);
+        if (out) {
+          cx.globalAlpha = 0.3;
+          bigCard(x, y, cw, ch, opt, { size: 24 });
+          cx.globalAlpha = 1;
+          cx.strokeStyle = PAL.heart; cx.lineWidth = 3;
+          cx.beginPath(); cx.moveTo(x + 18, y + ch / 2); cx.lineTo(x + cw - 18, y + ch / 2); cx.stroke();
+        } else {
+          bigCard(x, y, cw, ch, opt, { size: 26 });
+          if (!f.done) hits.push({ x, y, w: cw, h: ch, id: "fl" + i, fn: () => G.run.tapFlash(i) });
+        }
+      });
+    }
+  }
+
+  // ---------------- The Bookshelf (M3) ---------------------------
+  function scrBookshelf() {
+    drawHubBG();
+    const p = G.profile;
+    const pages = p.storyPages || 0;
+    const unlocked = chaptersUnlocked(p);
+
+    cx.fillStyle = "rgba(28,20,48,0.94)";
+    cx.fillRect(0, 0, W, 150);
+    panel(W / 2 - 120, 26, 240, 46, 14);
+    cx.fillStyle = PAL.ink; cx.textAlign = "center"; cx.textBaseline = "middle";
+    cx.font = F(22, 900);
+    cx.fillText("The Bookshelf", W / 2, 50);
+    cx.fillStyle = PAL.gold; cx.font = F(16, 800);
+    cx.fillText(`📖 ${pages} story ${pages === 1 ? "page" : "pages"} — beat bosses to find more`, W / 2, 96);
+    cx.fillStyle = "rgba(246,234,210,0.6)"; cx.font = F(13, 700);
+    cx.fillText(`${unlocked} of ${DATA.CHAPTERS.length} chapters unlocked`, W / 2, 122);
+
+    if (G.readingChapter != null) { renderChapter(G.readingChapter); return; }
+
+    const rowH = 62, VX = 16, VY = 156, VW = W - 32, VH = H - 156 - 100;
+    const contentH = DATA.CHAPTERS.length * rowH;
+    const maxScroll = Math.max(0, contentH - VH);
+    if (G.scrollVel && !G.drag) {
+      G.shopScroll = clamp((G.shopScroll || 0) + G.scrollVel * G.dt, 0, maxScroll);
+      G.scrollVel *= 0.9;
+      if (Math.abs(G.scrollVel) < 8) G.scrollVel = 0;
+    }
+    G.shopScroll = clamp(G.shopScroll || 0, 0, maxScroll);
+    const sc = G.shopScroll;
+    G.scrollView = { x: VX, y: VY, w: VW, h: VH, contentH };
+
+    cx.save();
+    cx.beginPath(); rr(cx, VX, VY, VW, VH, 14); cx.clip();
+    cx.fillStyle = "rgba(28,20,48,0.82)";
+    cx.fillRect(VX, VY, VW, VH);
+    DATA.CHAPTERS.forEach((ch, i) => {
+      const y = VY + i * rowH - sc;
+      if (y > VY + VH || y + rowH < VY) return;
+      const open = ch.pages <= pages;
+      cx.fillStyle = open ? "rgba(246,234,210,0.10)" : "rgba(246,234,210,0.04)";
+      rr(cx, VX + 8, y + 4, VW - 16, rowH - 10, 10); cx.fill();
+      cx.textAlign = "left"; cx.textBaseline = "middle";
+      cx.font = F(22, 700);
+      cx.fillText(open ? "📖" : "🔒", VX + 26, y + 28);
+      cx.fillStyle = open ? PAL.parch : "rgba(246,234,210,0.35)";
+      cx.font = F(16, 800);
+      cx.fillText(open ? ch.title : "Chapter " + (i + 1), VX + 58, y + 22);
+      cx.font = F(12, 600); cx.fillStyle = "rgba(246,234,210,0.5)";
+      cx.fillText(open ? "Tap to read" : `Needs ${ch.pages} story pages`, VX + 58, y + 40);
+      if (open && y + rowH > VY && y < VY + VH) {
+        hits.push({
+          x: VX + 8, y: Math.max(VY, y + 4), w: VW - 16, h: rowH - 10, id: "ch" + i,
+          fn: () => {
+            G.readingChapter = i; G.chapterScroll = 0; Audio2.play("tick");
+            G.profile.chaptersRead = Math.max(G.profile.chaptersRead || 0, chaptersUnlocked(G.profile));
+            Store.save();
+          }
+        });
+      }
+    });
+    cx.restore();
+
+    if (maxScroll > 0) {
+      const tx = VX + VW - 16, ty = VY + 8, th = VH - 16;
+      cx.fillStyle = "rgba(246,234,210,0.14)";
+      rr(cx, tx - 5, ty, 10, th, 5); cx.fill();
+      const thumbH = Math.max(52, th * (VH / contentH));
+      const thumbY = ty + (th - thumbH) * (sc / maxScroll);
+      cx.fillStyle = G.drag && G.drag.onThumb ? PAL.gold : PAL.mint;
+      rr(cx, tx - 8, thumbY, 16, thumbH, 8); cx.fill();
+    }
+
+    button(W / 2 - 110, H - 84, 220, 58, "Back to shop", () => {
+      G.shopScroll = 0; G.scrollVel = 0; G.scrollView = null; setScreen("hub");
+    }, { gold: true, px: 22, id: "back" });
+  }
+
+  function renderChapter(i) {
+    const ch = DATA.CHAPTERS[i];
+    G.scrollView = null;
+    panel(24, 160, W - 48, H - 160 - 96, 18);
+    cx.fillStyle = PAL.ink; cx.textAlign = "center"; cx.textBaseline = "middle";
+    cx.font = F(21, 900);
+    cx.fillText(ch.title, W / 2, 194);
+    // body text, wrapped, generous line height for young readers
+    cx.textAlign = "left";
+    cx.font = F(16, 600);
+    const maxW = W - 96;
+    let y = 232;
+    for (const para of ch.text.split("\n\n")) {
+      const words = para.split(" ");
+      let line = "";
+      for (const w of words) {
+        const test = line ? line + " " + w : w;
+        if (cx.measureText(test).width > maxW && line) {
+          cx.fillText(line, 48, y); y += 25; line = w;
+        } else line = test;
+      }
+      if (line) { cx.fillText(line, 48, y); y += 25; }
+      y += 12;
+    }
+    button(W / 2 - 110, H - 84, 220, 58, "Close the book", () => {
+      G.readingChapter = null; Audio2.play("tick");
+    }, { gold: true, px: 22, id: "closebook" });
+  }
+
+  // ---------------- Grown-ups corner (M4) ------------------------
+  function scrGrownups() {
+    drawHubBG();
+    cx.fillStyle = "rgba(20,14,36,0.95)";
+    cx.fillRect(0, 0, W, H);
+
+    cx.fillStyle = "rgba(28,20,48,0.98)";
+    cx.fillRect(0, 0, W, 150);
+    panel(W / 2 - 130, 24, 260, 48, 14);
+    cx.fillStyle = PAL.ink; cx.textAlign = "center"; cx.textBaseline = "middle";
+    cx.font = F(21, 900);
+    cx.fillText("Grown-ups", W / 2, 48);
+
+    // profile tabs
+    const profs = Store.data.profiles.filter(Boolean);
+    if (!profs.length) {
+      cx.fillStyle = PAL.parch; cx.font = F(16, 700);
+      cx.fillText("No wizards yet", W / 2, 300);
+    }
+    const who = clamp(G.guWho || 0, 0, Math.max(0, profs.length - 1));
+    profs.forEach((pr, i) => {
+      const tw = 100, x = W / 2 - (profs.length * (tw + 8)) / 2 + i * (tw + 8), y = 88;
+      cx.fillStyle = i === who ? PAL.mint : "rgba(246,234,210,0.14)";
+      rr(cx, x, y, tw, 38, 10); cx.fill();
+      cx.fillStyle = i === who ? PAL.ink : PAL.parch;
+      cx.font = F(15, 800);
+      cx.fillText(pr.name, x + tw / 2, y + 20);
+      hits.push({ x, y, w: tw, h: 38, id: "gu" + i, fn: () => { G.guWho = i; G.shopScroll = 0; Audio2.play("tick"); } });
+    });
+
+    const p = profs[who];
+    if (!p) { backBtn(); return; }
+    const rep = L.wordReport(p);
+
+    // settings row
+    const sy = 152;
+    toggleRow(24, sy, "Sound", !Store.data.settings.muted, () => {
+      Store.data.settings.muted = !Store.data.settings.muted;
+      Audio2.setMuted(Store.data.settings.muted); Store.save();
+    }, "tgSound");
+    toggleRow(24, sy + 46, "Word voices", Store.data.settings.tts, () => {
+      Store.data.settings.tts = !Store.data.settings.tts; Store.save();
+      if (Store.data.settings.tts) TTS.speak("Hello");
+    }, "tgTTS");
+    cx.textAlign = "left"; cx.fillStyle = "rgba(246,234,210,0.45)"; cx.font = F(11, 600);
+    cx.fillText(TTS.diagnose().slice(0, 44), 28, sy + 88);
+
+    // summary line
+    cx.textAlign = "left"; cx.fillStyle = PAL.gold; cx.font = F(14, 800);
+    cx.fillText(`Tier ${p.tier} of 5 · ${p.runsPlayed} runs · ${rep.seen} words seen`, 28, sy + 112);
+    cx.fillStyle = PAL.mint; cx.font = F(13, 700);
+    cx.fillText(`✓ ${rep.mastered.length} mastered`, 28, sy + 134);
+    cx.fillStyle = PAL.heart;
+    cx.fillText(`◦ ${rep.tricky.length} in the review pouch`, 150, sy + 134);
+
+    // scrollable word report
+    const VX = 16, VY = 300, VW = W - 32, VH = H - 300 - 150;
+    const groups = [
+      { title: "Tricky — coming back in the pouch", colour: PAL.heart, items: rep.tricky },
+      { title: "Mastered", colour: PAL.mint, items: rep.mastered },
+      { title: "Still learning", colour: "rgba(246,234,210,0.7)", items: rep.learning }
+    ].filter(g => g.items.length);
+    const rows = [];
+    groups.forEach(g => {
+      rows.push({ head: true, text: g.title, colour: g.colour });
+      for (let i = 0; i < g.items.length; i += 3) {
+        rows.push({ head: false, items: g.items.slice(i, i + 3), colour: g.colour });
+      }
+    });
+    if (!rows.length) rows.push({ head: true, text: "No words answered yet", colour: PAL.parch });
+
+    const rowH = 30, contentH = rows.length * rowH + 12;
+    const maxScroll = Math.max(0, contentH - VH);
+    if (G.scrollVel && !G.drag) {
+      G.shopScroll = clamp((G.shopScroll || 0) + G.scrollVel * G.dt, 0, maxScroll);
+      G.scrollVel *= 0.9;
+      if (Math.abs(G.scrollVel) < 8) G.scrollVel = 0;
+    }
+    G.shopScroll = clamp(G.shopScroll || 0, 0, maxScroll);
+    const sc = G.shopScroll;
+    G.scrollView = { x: VX, y: VY, w: VW, h: VH, contentH };
+
+    cx.save();
+    cx.beginPath(); rr(cx, VX, VY, VW, VH, 12); cx.clip();
+    cx.fillStyle = "rgba(246,234,210,0.05)";
+    cx.fillRect(VX, VY, VW, VH);
+    rows.forEach((r, i) => {
+      const y = VY + 8 + i * rowH - sc;
+      if (y > VY + VH || y + rowH < VY) return;
+      cx.textAlign = "left"; cx.textBaseline = "middle";
+      if (r.head) {
+        cx.fillStyle = r.colour; cx.font = F(13, 900);
+        cx.fillText(r.text.toUpperCase(), VX + 12, y + 15);
+      } else {
+        cx.font = F(14, 700);
+        r.items.forEach((it, k) => {
+          cx.fillStyle = r.colour;
+          cx.fillText(it.word, VX + 14 + k * 112, y + 15);
+        });
+      }
+    });
+    cx.restore();
+    if (maxScroll > 0) {
+      const tx = VX + VW - 12, ty = VY + 6, th = VH - 12;
+      cx.fillStyle = "rgba(246,234,210,0.12)";
+      rr(cx, tx - 4, ty, 8, th, 4); cx.fill();
+      const thumbH = Math.max(40, th * (VH / contentH));
+      cx.fillStyle = PAL.mint;
+      rr(cx, tx - 6, ty + (th - thumbH) * (sc / maxScroll), 12, thumbH, 6); cx.fill();
+    }
+
+    // reset (guarded)
+    if (G.guConfirm) {
+      cx.fillStyle = "rgba(10,6,20,0.86)";
+      cx.fillRect(0, 0, W, H);
+      panel(40, 300, W - 80, 200, 18);
+      cx.fillStyle = PAL.ink; cx.textAlign = "center"; cx.font = F(19, 900);
+      cx.fillText(`Erase all of ${p.name}'s progress?`, W / 2, 344);
+      cx.font = F(14, 700); cx.fillStyle = "#7a6a58";
+      cx.fillText("Coins, clothes, pets and words.", W / 2, 372);
+      cx.fillText("This cannot be undone.", W / 2, 392);
+      button(64, 420, 110, 52, "Cancel", () => { G.guConfirm = false; }, { px: 18, id: "guCancel" });
+      button(W - 174, 420, 110, 52, "Erase", () => {
+        L.resetProfile(p); Store.save(); G.guConfirm = false;
+        if (G.profile && G.profile.id === p.id) G.dispCoins = 0;
+        toast(`${p.name} reset`);
+      }, { px: 18, id: "guErase", danger: true });
+      return;
+    }
+    button(24, H - 132, 150, 46, "Reset " + p.name, () => { G.guConfirm = true; Audio2.play("tick"); },
+      { px: 15, id: "guReset", danger: true });
+    backBtn();
+  }
+  function backBtn() {
+    button(W / 2 - 100, H - 74, 200, 52, "Done", () => {
+      G.scrollView = null; G.scrollVel = 0; G.shopScroll = 0; setScreen("hub");
+    }, { gold: true, px: 20, id: "guDone" });
+  }
+  function toggleRow(x, y, label, on, fn, id) {
+    cx.textAlign = "left"; cx.textBaseline = "middle";
+    cx.fillStyle = PAL.parch; cx.font = F(15, 800);
+    cx.fillText(label, x + 4, y + 18);
+    const tw = 62, tx = W - 24 - tw;
+    cx.fillStyle = on ? PAL.mint : "rgba(246,234,210,0.18)";
+    rr(cx, tx, y + 2, tw, 32, 16); cx.fill();
+    cx.fillStyle = PAL.parch;
+    cx.beginPath(); cx.arc(on ? tx + tw - 16 : tx + 16, y + 18, 12, 0, 7); cx.fill();
+    hits.push({ x: tx - 8, y: y - 4, w: tw + 16, h: 44, id, fn: () => { fn(); Audio2.play("tick"); } });
+  }
+
+  // ---------------- Screens: render ------------------------------
+  function scrTitle() {
+    drawTowerBG();
+    cx.textAlign = "center";
+    cx.font = F(56, 900);
+    const wob = Math.sin(G.time * 1.8) * 4;
+    cx.fillStyle = "rgba(0,0,0,0.4)";
+    cx.fillText("Word", W / 2 + 3, 268 + wob); cx.fillText("Wizards", W / 2 + 3, 330 - wob);
+    cx.fillStyle = PAL.gold;
+    cx.fillText("Word", W / 2, 264 + wob); cx.fillText("Wizards", W / 2, 326 - wob);
+    star(W / 2 + 128, 240 + wob, 8); star(W / 2 - 132, 306 - wob, 6);
+    drawWizard(W / 2, 520, 1.5, ROBES.teal);
+    cx.fillStyle = "rgba(255,255,255,0.85)";
+    cx.font = F(24, 700);
+    cx.globalAlpha = 0.6 + 0.4 * Math.sin(G.time * 3);
+    cx.fillText("Tap to begin", W / 2, 640);
+    cx.globalAlpha = 1;
+    cx.font = F(14, 600); cx.fillStyle = "rgba(255,255,255,0.4)";
+    cx.fillText("Milestone 1 playtest", W / 2, H - 24);
+    hits.push({ x: 0, y: 0, w: W, h: H, fn: () => { setScreen("profiles"); }, id: "start" });
+  }
+
+  function scrProfiles() {
+    drawHubBG();
+    cx.textAlign = "center"; cx.fillStyle = PAL.parch;
+    cx.font = F(34, 900);
+    cx.fillText("Who is playing?", W / 2, 110);
+    const slots = [0, 1];
+    slots.forEach(i => {
+      const p = Store.data.profiles[i];
+      const x = 38 + i * 168, y = 190, w = 146, h = 240;
+      panel(x, y, w, h, 22);
+      if (p) {
+        drawWizard(x + w / 2, y + 118, 1.15, ROBES[p.colour] || ROBES.teal);
+        cx.fillStyle = PAL.ink; cx.textAlign = "center";
+        cx.font = F(fitFont(cx, p.name, w - 20, 24, 900), 900);
+        cx.fillText(p.name, x + w / 2, y + 170);
+        cx.font = F(15, 700);
+        cx.fillText(`Best floor ${p.bestFloor}`, x + w / 2, y + 198);
+        cx.fillText(`${p.wordsFreed} words freed`, x + w / 2, y + 218);
+        hits.push({ x, y, w, h, fn: () => { G.profile = p; G.dispCoins = p.coins; setScreen("hub"); }, id: "prof" + i });
+      } else {
+        cx.fillStyle = PAL.ink; cx.globalAlpha = 0.55;
+        cx.font = F(60, 700); cx.fillText("+", x + w / 2, y + 110);
+        cx.font = F(20, 800); cx.fillText("New wizard", x + w / 2, y + 165);
+        cx.globalAlpha = 1;
+        hits.push({ x, y, w, h, fn: () => { G.nameDraft = ""; setScreen("name"); }, id: "new" + i });
+      }
+    });
+    cx.fillStyle = "rgba(255,255,255,0.55)"; cx.font = F(16, 600);
+    cx.fillText("Two wizards can share this device", W / 2, 470);
+    if (!Store.persistent) {
+      cx.fillStyle = PAL.heart; cx.font = F(14, 700);
+      cx.fillText("Saving is blocked on this browser — progress won't keep", W / 2, 500);
+    }
+  }
+
+  function scrName() {
+    drawHubBG();
+    cx.textAlign = "center"; cx.fillStyle = PAL.parch;
+    cx.font = F(30, 900);
+    cx.fillText("Type your name", W / 2, 96);
+    panel(60, 130, W - 120, 64, 16);
+    cx.fillStyle = PAL.ink; cx.font = F(32, 900);
+    const shown = G.nameDraft + ((G.time * 2 | 0) % 2 ? "|" : "");
+    cx.fillText(shown || "…", W / 2, 164);
+    const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    const cols = 5, size = 58, gap = 10;
+    const gx = (W - (cols * size + (cols - 1) * gap)) / 2, gy = 230;
+    for (let i = 0; i < 26; i++) {
+      const r = Math.floor(i / cols), c = i % cols;
+      const x = gx + c * (size + gap), y = gy + r * (size + gap);
+      button(x, y, size, size, letters[i], () => {
+        if (G.nameDraft.length < 9) { G.nameDraft += letters[i]; Audio2.play("tick"); }
+      }, { px: 26, id: "L" + letters[i] });
+    }
+    // row 6: backspace + done
+    const y6 = gy + 5 * (size + gap) + 4;
+    button(gx, y6, size * 2 + gap, size, "⌫", () => {
+      G.nameDraft = G.nameDraft.slice(0, -1); Audio2.play("tickLow");
+    }, { px: 26, id: "bk" });
+    button(gx + (size + gap) * 3, y6, size * 2 + gap, size, "Done ✓", () => {
+      if (G.nameDraft.length >= 1) { G.colourDraft = "teal"; setScreen("colour"); }
+      else toast("Tap some letters first!");
+    }, { px: 22, gold: true, id: "done" });
+  }
+
+  function scrColour() {
+    drawHubBG();
+    cx.textAlign = "center"; cx.fillStyle = PAL.parch;
+    cx.font = F(30, 900);
+    cx.fillText("Pick your robe", W / 2, 96);
+    drawWizard(W / 2, 260, 1.7, ROBES[G.colourDraft]);
+    const keys = Object.keys(ROBES);
+    keys.forEach((k, i) => {
+      const x = 46 + (i % 3) * 108, y = 400 + Math.floor(i / 3) * 96;
+      cx.fillStyle = "rgba(0,0,0,0.3)";
+      cx.beginPath(); cx.arc(x + 42, y + 42 + 3, 38, 0, 7); cx.fill();
+      cx.fillStyle = ROBES[k];
+      cx.beginPath(); cx.arc(x + 42, y + 42, 38, 0, 7); cx.fill();
+      if (G.colourDraft === k) {
+        cx.strokeStyle = PAL.gold; cx.lineWidth = 5;
+        cx.beginPath(); cx.arc(x + 42, y + 42, 44, 0, 7); cx.stroke();
+      }
+      hits.push({ x, y, w: 84, h: 84, fn: () => { G.colourDraft = k; Audio2.play("tick"); }, id: "col" + k });
+    });
+    button(W / 2 - 110, 620, 220, 64, "Let's go!", () => {
+      const p = L.newProfile(G.nameDraft, G.colourDraft);
+      Store.data.profiles.push(p); Store.save();
+      G.profile = p; G.dispCoins = 0;
+      setScreen("hub");
+    }, { gold: true, px: 28, id: "go" });
+  }
+
+  function scrHub() {
+    drawHubBG();
+    const p = G.profile;
+    const eq = p.equipped || {};
+    // sign — long-press for the grown-ups corner
+    panel(W / 2 - 130, 36, 260, 54, 16);
+    cx.fillStyle = PAL.ink; cx.textAlign = "center";
+    cx.font = F(25, 900);
+    cx.fillText("The Bookshop", W / 2, 64);
+    if (G.holdId === "sign" && G.holdT > 0.15) {
+      const frac = clamp(G.holdT / HOLD_TIME, 0, 1);
+      cx.strokeStyle = PAL.gold; cx.lineWidth = 3;
+      cx.beginPath();
+      cx.arc(W / 2, 63, 40, -Math.PI / 2, -Math.PI / 2 + frac * Math.PI * 2);
+      cx.stroke();
+    }
+    hits.push({ x: W / 2 - 130, y: 36, w: 260, h: 54, id: "sign", hold: true, fn: () => {} });
+    // wizard by the lamp, wearing what they've bought
+    drawWizard(96, 300, 1.45, ROBES[p.colour] || ROBES.teal, null, eq);
+    cx.fillStyle = PAL.parch; cx.font = F(19, 800); cx.textAlign = "center";
+    cx.fillText(p.name, 96, 368);
+    // coin plaque
+    panel(W - 168, 108, 148, 84, 14);
+    cx.fillStyle = PAL.ink; cx.textAlign = "left"; cx.font = F(20, 900);
+    drawCoin(W - 148, 134, 11);
+    cx.fillText(String(Math.floor(G.dispCoins)), W - 128, 135);
+    cx.font = F(14, 700); cx.fillStyle = "#7a6a58";
+    cx.fillText(`Best floor ${p.bestFloor}`, W - 152, 162);
+    cx.fillText(`${p.wordsFreed} words freed`, W - 152, 180);
+    cx.textAlign = "center";
+
+    // daily gift chest — waits patiently, never expires
+    const giftOn = L.giftReady(p, Date.now());
+    const gx = W - 62, gy = 236;
+    cx.save();
+    if (giftOn) {
+      const bob = Math.sin(G.time * 3) * 3;
+      cx.translate(0, bob);
+      cx.shadowColor = PAL.gold; cx.shadowBlur = 16;
+    }
+    cx.fillStyle = giftOn ? "#8a5a3c" : "#4a3f5e";
+    rr(cx, gx - 26, gy - 16, 52, 34, 6); cx.fill();
+    cx.fillStyle = giftOn ? PAL.gold : "#5f5478";
+    rr(cx, gx - 26, gy - 24, 52, 12, 4); cx.fill();
+    rr(cx, gx - 5, gy - 18, 10, 14, 2); cx.fill();
+    cx.restore();
+    cx.fillStyle = giftOn ? PAL.gold : "rgba(246,234,210,0.45)";
+    cx.font = F(12, 800);
+    cx.fillText(giftOn ? "Gift!" : "tomorrow", gx, gy + 32);
+    if (giftOn) {
+      hits.push({
+        x: gx - 34, y: gy - 34, w: 68, h: 68, id: "gift", fn: () => {
+          const amt = L.claimGift(p, Date.now(), Math.random);
+          if (amt > 0) {
+            Store.save();
+            spCoins(gx, gy, 10);
+            spConfetti(26);
+            Audio2.play("fanfare");
+            toast(`Daily gift: ${amt} coins!`);
+          }
+        }
+      });
+    }
+
+    // four counters
+    const counters = [
+      ["Wardrobe", "🧢", "wardrobe"],
+      ["Pets", "🐾", "pets"],
+      ["Magic", "✨", "upgrades"],
+      ["Books", "📖", "bookshelf"],
+      ["Sisters", "👭", "sisters"]
+    ];
+    const cw = 62, cg = 7;
+    const totalW = counters.length * cw + (counters.length - 1) * cg;
+    counters.forEach(([label, icon, id], i) => {
+      const x = (W - totalW) / 2 + i * (cw + cg), y = 404;
+      const goal = (id === "sisters" || id === "bookshelf") ? null : cheapestIn(id, p);
+      const canBuy = goal && p.coins >= goal.price;
+      const newBook = id === "bookshelf" && chaptersUnlocked(p) > (p.chaptersRead || 0);
+      cx.save();
+      if (canBuy || newBook) { cx.shadowColor = PAL.gold; cx.shadowBlur = 12; }
+      cx.fillStyle = "#5a4a78";
+      rr(cx, x, y, cw, 96, 12); cx.fill();
+      cx.restore();
+      cx.fillStyle = "rgba(246,234,210,0.16)";
+      rr(cx, x + 4, y + 4, cw - 8, 52, 8); cx.fill();
+      cx.font = F(26, 700); cx.textAlign = "center"; cx.textBaseline = "middle";
+      cx.fillText(icon, x + cw / 2, y + 30);
+      cx.fillStyle = PAL.parch; cx.font = F(13, 800);
+      cx.fillText(label, x + cw / 2, y + 72);
+      if (canBuy || newBook) {
+        cx.fillStyle = PAL.gold; cx.font = F(10, 800);
+        cx.fillText(newBook ? "new!" : "can buy!", x + cw / 2, y + 88);
+      }
+      hits.push({
+        x, y, w: cw, h: 96, id: "cnt" + id, fn: () => {
+          Audio2.play("tick");
+          G.shopScroll = 0; G.scrollVel = 0;
+          if (id === "sisters") setScreen("sisters");
+          else if (id === "bookshelf") { G.readingChapter = null; setScreen("bookshelf"); }
+          else { G.shopTab = id; setScreen("shop"); }
+        }
+      });
+    });
+
+    // Library Restored — both sisters together
+    const lib = Store.data.shared.library || 0;
+    const frac = clamp(lib / DATA.LIBRARY_GOAL, 0, 1);
+    const lx = 40, ly = 528, lw = W - 80;
+    cx.fillStyle = "rgba(246,234,210,0.15)";
+    rr(cx, lx, ly, lw, 18, 9); cx.fill();
+    cx.fillStyle = frac >= 1 ? PAL.gold : PAL.mint;
+    rr(cx, lx, ly, Math.max(10, lw * frac), 18, 9); cx.fill();
+    cx.fillStyle = PAL.parch; cx.font = F(13, 800); cx.textAlign = "center";
+    cx.fillText(frac >= 1 ? "Library restored! ★" : `Library restored: ${lib} / ${DATA.LIBRARY_GOAL} words`, W / 2, ly + 34);
+
+    // big enter button
+    button(W / 2 - 140, 580, 280, 76, "Enter the Tower", startRun, { gold: true, px: 30, id: "enter" });
+    cx.fillStyle = "rgba(255,255,255,0.5)"; cx.font = F(14, 600); cx.textAlign = "center";
+    cx.fillText("Read words, rescue them, earn coins!", W / 2, 686);
+    // corner icons
+
+    iconButton(34, 40, 22, Store.data.settings.muted ? "🔇" : "🔊", () => {
+      Store.data.settings.muted = !Store.data.settings.muted;
+      Audio2.setMuted(Store.data.settings.muted); Store.save();
+    }, "mute");
+    iconButton(88, 40, 22, Store.data.settings.tts ? "🗣" : "🤫", () => {
+      Store.data.settings.tts = !Store.data.settings.tts; Store.save();
+      if (!Store.data.settings.tts) { toast("Word voices off"); return; }
+      TTS.speak("Hello wizard");
+      setTimeout(() => toast(TTS.diagnose()), 700);
+    }, "tts");
+    iconButton(W - 34, H - 44, 22, "👥", () => setScreen("profiles"), "switch");
+  }
+
+  // ---- Run rendering ----
+
+  // ---------------- Shop screens (M2) -------------------------
+  function cheapestIn(section, p) {
+    return L.catalogue(section)
+      .filter(it => !L.owns(p, it.id))
+      .sort((a, b) => a.price - b.price)[0] || null;
+  }
+
+  function scrShop() {
+    drawHubBG();
+    const p = G.profile;
+    const tab = G.shopTab || "wardrobe";
+    const titles = { wardrobe: "Wardrobe", pets: "Pet Shop", upgrades: "Magic Counter" };
+
+    // --- header (opaque, so nothing shows through) ---
+    cx.fillStyle = "rgba(28,20,48,0.94)";
+    cx.fillRect(0, 0, W, 176);
+    panel(W / 2 - 120, 26, 240, 46, 14);
+    cx.fillStyle = PAL.ink; cx.textAlign = "center"; cx.textBaseline = "middle";
+    cx.font = F(22, 900);
+    cx.fillText(titles[tab], W / 2, 50);
+    // live preview of the wizard, wearing what they own
+    drawWizard(56, 138, 0.85, ROBES[p.colour] || ROBES.teal, null, p.equipped);
+    // coins
+    cx.textAlign = "right"; cx.font = F(21, 900); cx.fillStyle = PAL.gold;
+    cx.fillText(String(Math.floor(G.dispCoins)), W - 50, 110);
+    drawCoin(W - 32, 104, 11);
+    cx.textAlign = "center"; cx.font = F(12, 700); cx.fillStyle = "rgba(246,234,210,0.5)";
+    cx.fillText("drag to scroll", W - 66, 142);
+
+    // --- scrolling viewport ---
+    const items = L.catalogue(tab);
+    const rowH = 76, VX = 16, VY = 182, VW = W - 32, VH = H - 182 - 104;
+    const contentH = items.length * rowH;
+    const maxScroll = Math.max(0, contentH - VH);
+    // momentum glide
+    if (G.scrollVel && !G.drag) {
+      G.shopScroll = clamp((G.shopScroll || 0) + G.scrollVel * G.dt, 0, maxScroll);
+      G.scrollVel *= 0.9;
+      if (Math.abs(G.scrollVel) < 8) G.scrollVel = 0;
+    }
+    G.shopScroll = clamp(G.shopScroll || 0, 0, maxScroll);
+    const sc = G.shopScroll;
+    // publish the viewport so the input layer knows this screen scrolls
+    G.scrollView = { x: VX, y: VY, w: VW, h: VH, contentH };
+
+    cx.save();
+    cx.beginPath(); rr(cx, VX, VY, VW, VH, 14); cx.clip();
+    cx.fillStyle = "rgba(28,20,48,0.82)";
+    cx.fillRect(VX, VY, VW, VH);
+
+    items.forEach((it, i) => {
+      const y = VY + i * rowH - sc;
+      if (y > VY + VH || y + rowH < VY) return;    // offscreen, skip
+      const owned = L.owns(p, it.id);
+      const afford = p.coins >= it.price;
+      const equipped = tab === "pets" ? p.equipped.pet === it.id : p.equipped[it.kind] === it.id;
+
+      cx.fillStyle = owned ? "rgba(127,224,212,0.12)" : "rgba(246,234,210,0.08)";
+      rr(cx, VX + 8, y + 4, VW - 16, rowH - 12, 12); cx.fill();
+      if (equipped) {
+        cx.strokeStyle = PAL.mint; cx.lineWidth = 2;
+        rr(cx, VX + 8, y + 4, VW - 16, rowH - 12, 12); cx.stroke();
+      }
+      // swatch or icon
+      if (tab === "wardrobe") {
+        cx.fillStyle = it.c;
+        rr(cx, VX + 20, y + 18, 38, 38, 10); cx.fill();
+      } else {
+        cx.font = F(30, 700); cx.textAlign = "center"; cx.textBaseline = "middle";
+        cx.fillText(it.icon, VX + 39, y + 37);
+      }
+      cx.textAlign = "left"; cx.textBaseline = "middle";
+      cx.fillStyle = PAL.parch; cx.font = F(17, 800);
+      cx.fillText(it.label, VX + 72, y + 27);
+      cx.font = F(12, 600); cx.fillStyle = "rgba(246,234,210,0.6)";
+      cx.fillText(it.blurb || kindName(it.kind), VX + 72, y + 47);
+
+      // buy / wear button — clear of the slider
+      const bw = 78, bh = 42, bx = VX + VW - bw - 34, by = y + 12;
+      cx.fillStyle = owned ? (equipped ? "rgba(127,224,212,0.3)" : PAL.mint)
+        : afford ? PAL.gold : "rgba(246,234,210,0.14)";
+      rr(cx, bx, by, bw, bh, 12); cx.fill();
+      cx.textAlign = "center"; cx.textBaseline = "middle";
+      cx.fillStyle = owned || afford ? PAL.ink : "rgba(246,234,210,0.5)";
+      if (owned) {
+        cx.font = F(14, 900);
+        cx.fillText(equipped ? "Wearing" : "Wear", bx + bw / 2, by + bh / 2);
+      } else {
+        drawCoin(bx + 18, by + bh / 2, 9);
+        cx.font = F(17, 900);
+        cx.fillText(String(it.price), bx + 48, by + bh / 2 + 1);
+      }
+      // only hit-testable while actually visible in the viewport
+      if (by + bh > VY && by < VY + VH) {
+        hits.push({
+          x: bx - 2, y: Math.max(VY, by - 2), w: bw + 4, h: bh + 4, id: "shop" + it.id, fn: () => {
+            if (owned) { L.equip(p, it.id); Store.save(); Audio2.play("tick"); }
+            else if (L.buy(p, it)) {
+              Store.save(); Audio2.play("fanfare"); spConfetti(30);
+              G.dispCoins = p.coins;
+              toast(`${it.label} — yours!`);
+            } else { Audio2.play("wrong"); toast(`${it.price - p.coins} more coins needed`); }
+          }
+        });
+      }
+    });
+    cx.restore();
+
+    // --- right-hand slider ---
+    if (maxScroll > 0) {
+      const tx = VX + VW - 16, ty = VY + 8, th = VH - 16;
+      cx.fillStyle = "rgba(246,234,210,0.14)";
+      rr(cx, tx - 5, ty, 10, th, 5); cx.fill();
+      const thumbH = Math.max(52, th * (VH / contentH));
+      const thumbY = ty + (th - thumbH) * (sc / maxScroll);
+      cx.fillStyle = G.drag && G.drag.onThumb ? PAL.gold : PAL.mint;
+      cx.save();
+      cx.shadowColor = "rgba(0,0,0,0.4)"; cx.shadowBlur = 6;
+      rr(cx, tx - 8, thumbY, 16, thumbH, 8); cx.fill();
+      cx.restore();
+      // grip lines
+      cx.strokeStyle = "rgba(23,16,41,0.35)"; cx.lineWidth = 2;
+      for (const o of [-4, 0, 4]) {
+        cx.beginPath();
+        cx.moveTo(tx - 4, thumbY + thumbH / 2 + o);
+        cx.lineTo(tx + 4, thumbY + thumbH / 2 + o);
+        cx.stroke();
+      }
+    }
+
+    button(W / 2 - 110, H - 88, 220, 58, "Back to shop", () => {
+      G.shopScroll = 0; G.scrollVel = 0; G.scrollView = null; setScreen("hub");
+    }, { gold: true, px: 22, id: "back" });
+  }
+  function kindName(k) {
+    return k === "hat" ? "Headgear" : k === "cape" ? "Cape" : k === "wand" ? "Wand sparkles" : "";
+  }
+
+  // Sisters' Shelf — side by side, never a shaming scoreboard
+  function scrSisters() {
+    drawHubBG();
+    panel(W / 2 - 130, 34, 260, 50, 14);
+    cx.fillStyle = PAL.ink; cx.textAlign = "center"; cx.font = F(23, 900);
+    cx.fillText("Sisters' Shelf", W / 2, 60);
+
+    const profs = Store.data.profiles.filter(Boolean);
+    if (!profs.length) {
+      cx.fillStyle = PAL.parch; cx.font = F(17, 700);
+      cx.fillText("No wizards yet!", W / 2, 300);
+    }
+    profs.slice(0, 2).forEach((pr, i) => {
+      const x = i === 0 ? W / 4 : (W * 3) / 4;
+      drawWizard(x, 250, 1.3, ROBES[pr.colour] || ROBES.teal, null, pr.equipped);
+      cx.fillStyle = PAL.parch; cx.textAlign = "center"; cx.font = F(20, 900);
+      cx.fillText(pr.name, x, 320);
+      panel(x - 74, 340, 148, 128, 14);
+      cx.fillStyle = PAL.ink; cx.font = F(15, 800); cx.textAlign = "center";
+      cx.fillText("Best floor", x, 368);
+      cx.font = F(28, 900); cx.fillText(String(pr.bestFloor), x, 396);
+      cx.font = F(15, 800); cx.fillText("Words freed", x, 428);
+      cx.font = F(22, 900); cx.fillText(String(pr.wordsFreed), x, 454);
+    });
+
+    // shared goal
+    const lib = Store.data.shared.library || 0;
+    const frac = clamp(lib / DATA.LIBRARY_GOAL, 0, 1);
+    cx.fillStyle = PAL.parch; cx.textAlign = "center"; cx.font = F(15, 800);
+    cx.fillText("Together you have freed", W / 2, 512);
+    cx.font = F(30, 900); cx.fillStyle = PAL.gold;
+    cx.fillText(`${lib} words`, W / 2, 546);
+    const lx = 40, ly = 566, lw = W - 80;
+    cx.fillStyle = "rgba(246,234,210,0.15)";
+    rr(cx, lx, ly, lw, 18, 9); cx.fill();
+    cx.fillStyle = frac >= 1 ? PAL.gold : PAL.mint;
+    rr(cx, lx, ly, Math.max(10, lw * frac), 18, 9); cx.fill();
+    cx.fillStyle = "rgba(246,234,210,0.75)"; cx.font = F(13, 700);
+    cx.fillText(frac >= 1 ? "The Great Library is restored! ★"
+      : `${DATA.LIBRARY_GOAL - lib} more to restore the Great Library`, W / 2, ly + 36);
+
+    button(W / 2 - 110, H - 92, 220, 60, "Back to shop", () => setScreen("hub"), { gold: true, px: 22, id: "back" });
+  }
+
+  // ---------------- In-run mole merchant ----------------------
+  function renderMerchant(R) {
+    cx.textAlign = "center";
+    cx.fillStyle = PAL.gold; cx.font = F(24, 900);
+    cx.fillText("The Mole's Cart", W / 2, 132);
+    cx.fillStyle = "rgba(246,234,210,0.65)"; cx.font = F(14, 700);
+    cx.fillText("Just for this adventure!", W / 2, 156);
+
+    // the mole
+    cx.save();
+    cx.translate(70, 214);
+    const bob = Math.sin(G.time * 2.5) * 3;
+    cx.translate(0, bob);
+    cx.fillStyle = "#6b5040";
+    cx.beginPath(); cx.ellipse(0, 0, 26, 24, 0, 0, 7); cx.fill();
+    cx.fillStyle = "#ffc7d0";
+    cx.beginPath(); cx.ellipse(0, 8, 7, 5, 0, 0, 7); cx.fill();
+    cx.fillStyle = PAL.ink;
+    cx.beginPath(); cx.arc(-8, -4, 2.4, 0, 7); cx.arc(8, -4, 2.4, 0, 7); cx.fill();
+    cx.fillStyle = PAL.gold;
+    rr(cx, -22, -30, 44, 10, 4); cx.fill();
+    cx.restore();
+
+    const items = R.shop.items;
+    items.forEach((it, i) => {
+      const y = 268 + i * 92;
+      const bought = R.shop.bought.includes(i);
+      const afford = R.runCoins >= it.price;
+      cx.fillStyle = bought ? "rgba(127,224,212,0.12)" : "rgba(246,234,210,0.09)";
+      rr(cx, 28, y, W - 56, 80, 14); cx.fill();
+      cx.font = F(30, 700); cx.textAlign = "center"; cx.textBaseline = "middle";
+      cx.fillText(it.icon, 62, y + 40);
+      cx.textAlign = "left";
+      cx.fillStyle = PAL.parch; cx.font = F(18, 800);
+      cx.fillText(it.label, 96, y + 30);
+      cx.fillStyle = "rgba(246,234,210,0.6)"; cx.font = F(13, 600);
+      cx.fillText(it.blurb, 96, y + 52);
+
+      const bx = W - 112, by = y + 18, bw = 76, bh = 44;
+      cx.fillStyle = bought ? "rgba(127,224,212,0.25)" : afford ? PAL.gold : "rgba(246,234,210,0.14)";
+      rr(cx, bx, by, bw, bh, 12); cx.fill();
+      cx.textAlign = "center"; cx.textBaseline = "middle";
+      cx.fillStyle = bought || afford ? PAL.ink : "rgba(246,234,210,0.5)";
+      if (bought) {
+        cx.font = F(15, 900);
+        cx.fillText("Got it!", bx + bw / 2, by + bh / 2);
+      } else {
+        drawCoin(bx + bw / 2 - 18, by + bh / 2, 9);
+        cx.font = F(18, 900);
+        cx.fillText(String(it.price), bx + bw / 2 + 12, by + bh / 2 + 1);
+        hits.push({ x: bx - 4, y: by - 4, w: bw + 8, h: bh + 8, id: "buy" + i, fn: () => G.run.buyItem(i) });
+      }
+    });
+
+    button(W / 2 - 110, H - 108, 220, 62, "Onwards!", () => G.run.leaveShop(), { gold: true, px: 22, id: "leave" });
+  }
+
+  function scrRun() {
+    const R = G.run.snapshot();
+    drawTowerBG(R.floorKind);
+    // wizard
+    G.wizPose = Math.max(0, (G.wizPose || 0) - G.dt);
+    if (R.phase === "wave" || R.phase === "doors")
+      drawWizard(W / 2, WIZ_Y, 1.25, ROBES[G.profile.colour], G.wizPose > 0 ? "zap" : null, G.profile.equipped);
+
+    if (R.phase === "wave") renderWave(R);
+    else if (R.phase === "spell") renderSpell(R, false);
+    else if (R.phase === "boss") renderSpell(R, true);
+    else if (R.phase === "doors") renderDoors(R);
+    else if (R.phase === "treasure") renderTreasure(R);
+    else if (R.phase === "rest") renderRest(R);
+    else if (R.phase === "shop") renderMerchant(R);
+    else if (R.phase === "rhyme") renderRhyme(R);
+    else if (R.phase === "odd") renderOdd(R);
+    else if (R.phase === "sentence") renderSentence(R);
+    else if (R.phase === "flash") renderFlash(R);
+
+    renderHUD(R);
+    if (dimT > 0) {
+      dimT -= G.dt;
+      cx.fillStyle = `rgba(255,255,255,${clamp(dimT * 2, 0, 0.7)})`;
+      cx.fillRect(-200, -200, W + 400, H + 400);
+    }
+    // floor banner
+    if (G.banner) {
+      G.banner.t -= G.dt;
+      const a = clamp(G.banner.t / 0.3, 0, 1);
+      const slide = easeOut(clamp((1.4 - G.banner.t) * 3, 0, 1));
+      cx.save(); cx.globalAlpha = a;
+      panel(W / 2 - 150, lerp(-70, 118, slide), 300, 56, 16);
+      cx.fillStyle = PAL.ink; cx.textAlign = "center";
+      cx.font = F(24, 900);
+      cx.fillText(G.banner.text, W / 2, lerp(-70, 118, slide) + 31);
+      cx.restore();
+      if (G.banner.t <= 0) G.banner = null;
+    }
+  }
+
+  function renderHUD(R) {
+    // shield + skip tokens (M2)
+    if (R.mods && R.mods.shield) {
+      cx.font = F(18, 700); cx.textAlign = "left"; cx.textBaseline = "middle";
+      cx.globalAlpha = R.shieldReady ? 1 : 0.28;
+      cx.fillText("🛡️", 24, 76);
+      cx.globalAlpha = 1;
+    }
+    if (R.skipTokens > 0 && (R.phase === "wave" || R.phase === "spell")) {
+      const bx = 24, by = H - 150;
+      cx.fillStyle = "rgba(246,234,210,0.16)";
+      rr(cx, bx, by, 92, 40, 12); cx.fill();
+      cx.fillStyle = PAL.parch; cx.font = F(14, 800);
+      cx.textAlign = "center"; cx.textBaseline = "middle";
+      cx.fillText(`⏭️ Skip ${R.skipTokens}`, bx + 46, by + 20);
+      hits.push({ x: bx, y: by, w: 92, h: 40, id: "skip", fn: () => G.run.useSkip() });
+    }
+    // hearts
+    for (let i = 0; i < R.maxHearts; i++) drawHeart(34 + i * 32, 42, 12, i < R.hearts);
+    // floor pill
+    cx.fillStyle = "rgba(0,0,0,0.35)";
+    rr(cx, W / 2 - 58, 24, 116, 36, 18); cx.fill();
+    cx.fillStyle = "#fff"; cx.textAlign = "center"; cx.font = F(20, 800);
+    cx.fillText(`Floor ${R.floor}`, W / 2, 43);
+    // coins
+    drawCoin(W - 52, 46, 12);
+    cx.fillStyle = "#fff"; cx.textAlign = "right"; cx.font = F(20, 900);
+    cx.fillText(String(Math.floor(G.dispCoins)), W - 70, 47);
+    cx.textAlign = "center";
+    // pause
+    iconButton(34, 92, 17, "⏸", () => { G.paused = true; }, "pause");
+    // streak pips
+    if (R.phase === "wave" || R.phase === "spell" || R.phase === "boss") {
+      for (let i = 0; i < 5; i++) {
+        const on = i < clamp(R.stormCharge, 0, 5);
+        cx.fillStyle = on ? PAL.gold : "rgba(255,255,255,0.2)";
+        star(W - 30 - i * 24, 86, on ? 8 : 6);
+      }
+    }
+    // storm button
+    if (R.stormReady && R.phase === "wave") {
+      G.stormPulse += G.dt * 4;
+      const r = 42 + Math.sin(G.stormPulse) * 4;
+      const x = W - 62, y = FIELD_BOT + 22;
+      const grad = cx.createRadialGradient(x, y, 5, x, y, r + 12);
+      grad.addColorStop(0, "rgba(127,224,212,0.9)"); grad.addColorStop(1, "rgba(127,224,212,0)");
+      cx.fillStyle = grad; cx.beginPath(); cx.arc(x, y, r + 12, 0, 7); cx.fill();
+      cx.fillStyle = PAL.mint; cx.beginPath(); cx.arc(x, y, r, 0, 7); cx.fill();
+      cx.fillStyle = PAL.ink; cx.font = F(15, 900);
+      cx.fillText("WORD", x, y - 8); cx.fillText("STORM", x, y + 10);
+      hits.push({ x: x - r, y: y - r, w: r * 2, h: r * 2, fn: () => G.run.tapStorm(), id: "storm" });
+    }
+    // toast
+    if (G.toast) {
+      G.toast.t -= G.dt;
+      cx.globalAlpha = clamp(G.toast.t, 0, 1);
+      cx.fillStyle = "rgba(0,0,0,0.6)";
+      const tw = cx.measureText(G.toast.msg).width + 40;
+      rr(cx, W / 2 - tw / 2, H - 120, tw, 40, 20); cx.fill();
+      cx.fillStyle = "#fff"; cx.font = F(17, 700);
+      cx.fillText(G.toast.msg, W / 2, H - 99);
+      cx.globalAlpha = 1;
+      if (G.toast.t <= 0) G.toast = null;
+    }
+    // pause overlay
+    if (G.paused) {
+      cx.fillStyle = "rgba(20,12,40,0.8)";
+      cx.fillRect(-200, -200, W + 400, H + 400);
+      panel(W / 2 - 140, 300, 280, 240, 20);
+      cx.fillStyle = PAL.ink; cx.font = F(26, 900);
+      cx.fillText("Paused", W / 2, 348);
+      button(W / 2 - 110, 380, 220, 58, "Keep playing", () => { G.paused = false; }, { gold: true, id: "resume" });
+      button(W / 2 - 110, 456, 220, 58, "Back to shop", () => { G.paused = false; G.run.quit(); }, { id: "quit" });
+    }
+  }
+
+  function renderPrompt(R) {
+    panel(30, 118, W - 60, 92, 18);
+    cx.fillStyle = PAL.ink; cx.textAlign = "left";
+    cx.font = F(17, 700);
+    cx.fillText("Find:", 52, 150);
+    cx.textAlign = "center";
+    cx.font = F(fitFont(cx, R.prompt, W - 190, 42, 900), 900);
+    // generous letter spacing for the target word
+    const pu = (G.promptPulse || 0) > 0 ? 1 + G.promptPulse * 0.2 : 1;
+    if ((G.promptPulse || 0) > 0) G.promptPulse -= G.dt;
+    cx.save();
+    cx.translate(W / 2 - 14, 180); cx.scale(pu, pu); cx.translate(-(W / 2 - 14), -180);
+    drawSpaced(R.prompt, W / 2 - 14, 180, 2.5);
+    cx.restore();
+    iconButton(W - 68, 164, 24, "🔊", () => {
+      G.promptPulse = 0.5;
+      if (TTS.on && TTS.ready) TTS.speak(R.prompt);
+      else if (TTS.on) toast("No reading voice on this device");
+      else toast("Word voices are off");
+    }, "say");
+  }
+  function drawSpaced(text, x, y, extra) {
+    const total = cx.measureText(text).width + extra * (text.length - 1);
+    let px = x - total / 2;
+    cx.textAlign = "left";
+    for (const ch of text) {
+      cx.fillText(ch, px, y);
+      px += cx.measureText(ch).width + extra;
+    }
+    cx.textAlign = "center";
+  }
+
+  function renderWave(R) {
+    renderPrompt(R);
+    R.blots.forEach((b, i) => drawBlot(b, i, false));
+  }
+
+  function renderSpell(R, isBoss) {
+    const s = R.spell;
+    if (!s) return;
+    // The logic layer advances s.idx the instant a word is solved, but the
+    // next word's tiles only load after the celebration delay. Render the word
+    // that matches the tiles on screen, or the slot row visibly resizes.
+    const word = (G.spellShown && G.spellShown.length === s.slots.length)
+      ? G.spellShown
+      : (s.words[Math.min(s.idx, s.words.length - 1)] || s.words[0]).word;
+    G._renderedLen = word.length;   // instrumentation for the flicker test
+    // big blot
+    const bigB = { lane: 0.5, progress: (170 - FIELD_TOP) / (FIELD_BOT - FIELD_TOP), seed: 0.4, alive: true, wrongAt: G.spellShake > 0 ? G.spellShake : 0, word: "" };
+    if (isBoss) {
+      cx.save(); cx.translate(0, 10);
+      drawBlot(bigB, -1, true);
+      cx.restore();
+      // segments
+      for (let i = 0; i < 3; i++) {
+        const on = i >= R.boss.segmentsDone;
+        cx.fillStyle = on ? PAL.heart : "rgba(255,255,255,0.15)";
+        rr(cx, W / 2 - 60 + i * 42, 258, 36, 14, 7); cx.fill();
+      }
+      cx.fillStyle = "#fff"; cx.font = F(18, 900); cx.textAlign = "center";
+      cx.fillText("Spell the words to win!", W / 2, 296);
+    } else {
+      drawBlot(bigB, -1, true);
+      cx.fillStyle = "rgba(255,255,255,0.75)"; cx.font = F(16, 700); cx.textAlign = "center";
+      cx.fillText(`Word ${s.idx + 1} of ${s.total} — monsters are waiting politely`, W / 2, 282);
+    }
+    // speech bubble: always a working listen button (speak + re-reveal)
+    panel(W / 2 - 90, 300, 180, 62, 22);
+    cx.fillStyle = PAL.ink; cx.font = F(26, 900);
+    cx.textAlign = "center"; cx.textBaseline = "middle";
+    cx.fillText("🔊", W / 2 - 26, 334);
+    cx.font = F(16, 700);
+    cx.fillText(G.reveal && G.reveal.t > 0 ? "look!" : "look again", W / 2 + 26, 334);
+    hits.push({
+      x: W / 2 - 90, y: 300, w: 180, h: 62, fn: () => {
+        G.reveal = { word, t: 1.2 };
+        G.promptPulse = 0.5;
+        TTS.speak(word);   // bonus if the device has a voice; harmless if not
+      }, id: "replay"
+    });
+
+    if (G.spellShake > 0) G.spellShake -= G.dt;
+    const shakeX = G.spellShake > 0 ? Math.sin(G.time * 45) * 5 * G.spellShake : 0;
+
+    // reveal card — the word, big, right where it's about to be built
+    if (G.reveal && G.reveal.t > 0 && G.reveal.word === word) {
+      G.reveal.t -= G.dt;
+      const a = Math.min(1, G.reveal.t / 0.3);
+      cx.save();
+      cx.globalAlpha = a;
+      const pu = 1 + Math.max(0, (G.promptPulse || 0)) * 0.12;
+      cx.translate(W / 2, 372); cx.scale(pu, pu); cx.translate(-W / 2, -372);
+      panel(W / 2 - 150, 348, 300, 52, 16);
+      cx.fillStyle = PAL.ink;
+      cx.font = F(fitFont(cx, word, 268, 34, 900), 900);
+      cx.textAlign = "center"; cx.textBaseline = "middle";
+      drawSpaced(word, W / 2, 374, 2.5);
+      cx.restore();
+    }
+    if ((G.promptPulse || 0) > 0) G.promptPulse -= G.dt;
+
+    // slots
+    const n = word.length;
+    const sw = Math.min(52, (W - 44) / n - 6);
+    const startX = W / 2 - (n * (sw + 6) - 6) / 2 + shakeX;
+    for (let i = 0; i < n; i++) {
+      const x = startX + i * (sw + 6), y = 396;
+      cx.fillStyle = "rgba(0,0,0,0.3)";
+      rr(cx, x + 1, y + 3, sw, sw + 8, 10); cx.fill();
+      cx.fillStyle = s.slots[i] ? PAL.parch : "rgba(246,234,210,0.35)";
+      rr(cx, x, y, sw, sw + 8, 10); cx.fill();
+      if (s.slots[i]) {
+        cx.fillStyle = PAL.ink;
+        cx.font = F(sw * 0.62, 900);
+        cx.fillText(s.slots[i].ch, x + sw / 2, y + (sw + 8) / 2 + 1);
+      } else if (s.hints) {
+        cx.fillStyle = "rgba(46,35,56,0.28)";
+        cx.font = F(sw * 0.62, 900);
+        cx.fillText(word[i], x + sw / 2, y + (sw + 8) / 2 + 1);
+      }
+    }
+    // tiles
+    const tiles = s.tiles;
+    const perRow = 5, tsz = 58, tgap = 10;
+    const rows = Math.ceil((tiles.length + 1) / perRow);
+    const gy = 520;
+    const items = tiles.map(t => ({ t })).concat([{ back: true }]);
+    items.forEach((it, k) => {
+      const r = Math.floor(k / perRow), c = k % perRow;
+      const rowCount = Math.min(perRow, items.length - r * perRow);
+      const rx = W / 2 - (rowCount * (tsz + tgap) - tgap) / 2;
+      const x = rx + c * (tsz + tgap), y = gy + r * (tsz + tgap);
+      if (it.back) {
+        button(x, y, tsz, tsz, "⌫", () => G.run.tapBackspace(), { px: 26, id: "bs" });
+      } else {
+        const t = it.t;
+        if (t.used) {
+          cx.fillStyle = "rgba(246,234,210,0.15)";
+          rr(cx, x, y, tsz, tsz, 12); cx.fill();
+        } else {
+          button(x, y, tsz, tsz, t.ch, () => G.run.tapTile(t.id), { px: 30, id: "tile" + t.id });
+        }
+      }
+    });
+  }
+
+  function renderDoors(R) {
+    cx.fillStyle = "rgba(255,255,255,0.9)"; cx.textAlign = "center";
+    cx.font = F(24, 900);
+    cx.fillText("Choose a door", W / 2, 168);
+    const n = R.doors.length;
+    const dw = 106, dh = 168, gap = 18;
+    const startX = W / 2 - (n * (dw + gap) - gap) / 2;
+    R.doors.forEach((d, i) => {
+      const bob = Math.sin(G.time * 2 + i * 1.4) * 4;
+      const x = startX + i * (dw + gap), y = 250 + bob;
+      // arched door
+      cx.fillStyle = "rgba(0,0,0,0.35)";
+      rr(cx, x + 3, y + 5, dw, dh, 40); cx.fill();
+      cx.fillStyle = d.type === "boss" ? "#5a2440" : PAL.purple;
+      cx.beginPath();
+      cx.moveTo(x, y + dh); cx.lineTo(x, y + 52);
+      cx.quadraticCurveTo(x + dw / 2, y - 26, x + dw, y + 52);
+      cx.lineTo(x + dw, y + dh); cx.closePath(); cx.fill();
+      cx.fillStyle = PAL.parch;
+      rr(cx, x + 12, y + dh - 56, dw - 24, 40, 10); cx.fill();
+      cx.font = F(34, 700);
+      cx.fillText(d.icon, x + dw / 2, y + 66);
+      cx.fillStyle = PAL.ink;
+      cx.font = F(fitFont(cx, d.label, dw - 34, 21, 900), 900);
+      cx.fillText(d.label, x + dw / 2, y + dh - 35);
+      hits.push({ x, y: 250, w: dw, h: dh, fn: () => G.run.chooseDoor(i), id: "door" + i });
+    });
+  }
+
+  function renderTreasure(R) {
+    cx.textAlign = "center";
+    cx.fillStyle = "rgba(255,255,255,0.9)"; cx.font = F(24, 900);
+    cx.fillText(R.treasure.opened ? "Ooh, shiny!" : "Tap the chest!", W / 2, 200);
+    const y = 400, open = R.treasure.opened;
+    cx.fillStyle = "#7a4a2a";
+    rr(cx, W / 2 - 70, y, 140, 84, 12); cx.fill();
+    cx.fillStyle = "#8f5a35";
+    cx.save(); cx.translate(W / 2, y);
+    cx.rotate(open ? -0.5 : 0);
+    cx.beginPath();
+    cx.moveTo(-70, 0); cx.quadraticCurveTo(0, -56, 70, 0); cx.closePath(); cx.fill();
+    cx.restore();
+    cx.fillStyle = PAL.gold;
+    rr(cx, W / 2 - 10, y + 8, 20, 26, 5); cx.fill();
+    if (open) { drawCoin(W / 2 - 26, y - 8, 12); drawCoin(W / 2 + 22, y - 16, 10); }
+    hits.push({ x: W / 2 - 90, y: y - 60, w: 180, h: 160, fn: () => G.run.openChest(), id: "chest" });
+  }
+
+  function renderRest(R) {
+    cx.textAlign = "center";
+    cx.fillStyle = "rgba(255,255,255,0.9)"; cx.font = F(24, 900);
+    cx.fillText(R.rest.taken ? "Cosy…" : "Tap to rest", W / 2, 200);
+    // lantern + bedroll
+    const y = 380;
+    cx.fillStyle = PAL.gold;
+    cx.beginPath(); cx.arc(W / 2, y - 40, 14 + Math.sin(G.time * 3) * 2, 0, 7); cx.fill();
+    const rg = cx.createRadialGradient(W / 2, y - 40, 8, W / 2, y - 40, 130);
+    rg.addColorStop(0, "rgba(255,207,107,0.35)"); rg.addColorStop(1, "rgba(255,207,107,0)");
+    cx.fillStyle = rg; cx.fillRect(W / 2 - 160, y - 190, 320, 320);
+    cx.fillStyle = "#7a4a6a";
+    rr(cx, W / 2 - 80, y + 40, 160, 44, 22); cx.fill();
+    drawHeart(W / 2, y + 10, 15, true);
+    hits.push({ x: W / 2 - 110, y: y - 80, w: 220, h: 220, fn: () => G.run.takeRest(), id: "rest" });
+  }
+
+  function scrResult() {
+    drawHubBG();
+    const s = G.runOver;
+    if (!s) { setScreen("hub"); return; }
+    const newBest = s.floor > G.preBest;
+    cx.textAlign = "center";
+    panel(36, 170, W - 72, 400, 24);
+    cx.fillStyle = PAL.ink;
+    cx.font = F(26, 900);
+    cx.fillText(s.reason === "quit" ? "A brave retreat!" : "The ink got too thick!", W / 2, 226);
+    cx.font = F(18, 700);
+    cx.fillText("Back to the bookshop you go", W / 2, 256);
+    cx.font = F(22, 800); cx.textAlign = "left";
+    const rows = [
+      ["🏰", `Floor climbed`, String(s.floor)],
+      ["🦋", `Words freed`, String(s.wordsFreed.length)],
+      ["", `Coins earned`, String(s.coins)],
+      ["⭐", `Best streak`, String(s.bestStreak)]
+    ];
+    rows.forEach((r, i) => {
+      const y = 316 + i * 56;
+      cx.textAlign = "left"; cx.textBaseline = "middle";
+      if (r[0]) { cx.font = F(26, 700); cx.fillText(r[0], 66, y); }
+      else drawCoin(78, y, 12);
+      cx.textAlign = "left"; cx.font = F(20, 700); cx.fillStyle = PAL.ink;
+      cx.fillText(r[1], 108, y);
+      cx.textAlign = "right"; cx.font = F(22, 900);
+      cx.fillText(r[2], W - 66, y);
+      cx.textAlign = "left";
+    });
+    if (newBest) {
+      cx.textAlign = "center";
+      const bw = 210, by = 544;
+      cx.save();
+      cx.translate(W / 2, by + 16);
+      cx.rotate(Math.sin(G.time * 3) * 0.03);
+      cx.fillStyle = PAL.gold;
+      rr(cx, -bw / 2, -18, bw, 36, 18); cx.fill();
+      cx.fillStyle = PAL.ink; cx.font = F(17, 900);
+      cx.textBaseline = "middle";
+      cx.fillText("★ NEW BEST FLOOR ★", 0, 1);
+      cx.restore();
+    }
+    cx.textAlign = "center";
+    button(W / 2 - 130, 600, 260, 66, "Back to the Bookshop", () => setScreen("hub"), { gold: true, px: 22, id: "back" });
+    if (newBest && !G._bestCelebrated) { G._bestCelebrated = true; spConfetti(60); Audio2.play("fanfare"); }
+  }
+
+  // ---------------- Main loop ----------------------------------
+  let last = 0;
+  function frame(ts) {
+    requestAnimationFrame(frame);
+    const dt = clamp((ts - last) / 1000, 0, 0.05);
+    last = ts;
+    G.dt = dt; G.time += dt;
+    hits.length = 0;
+    try {
+
+    if (G.holdId) {
+      G.holdT = (G.holdT || 0) + G.dt;
+      if (G.holdT >= HOLD_TIME) {
+        const id = G.holdId;
+        G.holdId = null; G.holdT = 0;
+        if (id === "sign") {
+          Audio2.play("fanfare"); vib(30);
+          G.guWho = 0; G.guConfirm = false; G.shopScroll = 0;
+          setScreen("grownups");
+        }
+      }
+    } else G.holdT = 0;
+
+    if (G.run && G.screen === "run" && !G.paused) {
+      const RR = G.run.snapshot();
+      G.flashLeft = (RR.phase === "flash" && RR.flash && RR.flash.shown) ? RR._timer : 0;
+      G.run.tick(dt);
+      handleRunEvents();
+    }
+    // animate coin counter toward truth even without particles
+    if (G.profile && coinsFly.length === 0 && G.dispCoins < G.profile.coins) {
+      G.dispCoins = Math.min(G.profile.coins, G.dispCoins + dt * 60);
+    }
+
+    cx.setTransform(S, 0, 0, S, OX, OY);
+    // camera shake
+    if (shakeT > 0) {
+      cx.translate((rnd() - 0.5) * shakeMag, (rnd() - 0.5) * shakeMag);
+    }
+    cx.textBaseline = "middle";
+
+    switch (G.screen) {
+      case "title": scrTitle(); break;
+      case "profiles": scrProfiles(); break;
+      case "name": scrName(); break;
+      case "colour": scrColour(); break;
+      case "hub": G._bestCelebrated = false; scrHub(); break;
+      case "shop": scrShop(); break;
+      case "sisters": scrSisters(); break;
+      case "bookshelf": scrBookshelf(); break;
+      case "grownups": scrGrownups(); break;
+      case "run": scrRun(); break;
+      case "result": scrResult(); break;
+    }
+
+    updateFX(dt);
+    drawFX();
+
+    // letterbox mask (device space)
+    cx.setTransform(1, 0, 0, 1, 0, 0);
+    cx.fillStyle = "#120c22";
+    if (OX > 0) { cx.fillRect(0, 0, OX, DEVH); cx.fillRect(DEVW - OX, 0, OX, DEVH); }
+    if (OY > 0) { cx.fillRect(0, 0, DEVW, OY); cx.fillRect(0, DEVH - OY, DEVW, OY); }
+    } catch (err) {
+      if (!G.fatal) G.fatal = String((err && err.stack) || err);
+    }
+    if (G.fatal) drawFatal();
+  }
+
+  function drawFatal() {
+    cx.setTransform(1, 0, 0, 1, 0, 0);
+    cx.fillStyle = "rgba(18,12,34,0.94)";
+    cx.fillRect(0, 0, DEVW, DEVH);
+    cx.fillStyle = "#ff9d7d";
+    cx.font = "600 " + Math.round(14 * (window.devicePixelRatio || 1)) + "px monospace";
+    cx.textAlign = "left"; cx.textBaseline = "top";
+    const pad = Math.round(16 * (window.devicePixelRatio || 1));
+    const lh = Math.round(20 * (window.devicePixelRatio || 1));
+    const lines = ("Oops! Please screenshot this for Dad:\n\n" + G.fatal).split("\n");
+    lines.slice(0, 16).forEach((l, i) => cx.fillText(l.slice(0, 70), pad, pad * 2 + i * lh));
+  }
+
+  // ---------------- Input ---------------------------------------
+  const DRAG_SLOP = 10;   // move further than this and it's a scroll, not a tap
+  const HOLD_TIME = 0.9;  // long-press duration for the grown-ups corner
+
+  function fireHit(x, y) {
+    for (let i = hits.length - 1; i >= 0; i--) {
+      const h = hits[i];
+      if (x >= h.x && x <= h.x + h.w && y >= h.y && y <= h.y + h.h) {
+        G.pressId = h.id;
+        setTimeout(() => { if (G.pressId === h.id) G.pressId = null; }, 130);
+        h.fn();
+        return true;
+      }
+    }
+    return false;
+  }
+
+  function onPointer(e) {
+    e.preventDefault();
+    Audio2.ensure(); TTS.init();
+    const { x, y } = toLogical(e);
+    // long-press targets (the hub sign) start a hold timer instead of firing
+    for (let i = hits.length - 1; i >= 0; i--) {
+      const h = hits[i];
+      if (h.hold && x >= h.x && x <= h.x + h.w && y >= h.y && y <= h.y + h.h) {
+        G.holdId = h.id; G.holdT = 0; G.holdX = x; G.holdY = y;
+        return;
+      }
+    }
+    // Scrollable screens defer the tap to pointerup so a drag doesn't buy things.
+    if (G.scrollView && (G.screen === "shop" || G.screen === "bookshelf" || G.screen === "grownups")) {
+      const V = G.scrollView;
+      G.drag = {
+        x0: x, y0: y, scroll0: G.shopScroll || 0, moved: false,
+        onThumb: x > V.x + V.w - 34,   // grabbing the slider itself
+        vel: 0, lastY: y, lastT: G.time
+      };
+      return;
+    }
+    fireHit(x, y);
+  }
+
+  function onPointerMove(e) {
+    if (G.holdId) {
+      const { x, y } = toLogical(e);
+      if (Math.abs(x - G.holdX) > DRAG_SLOP || Math.abs(y - G.holdY) > DRAG_SLOP) G.holdId = null;
+      return;
+    }
+    if (!G.drag) return;
+    e.preventDefault();
+    const { x, y } = toLogical(e);
+    const d = G.drag, V = G.scrollView;
+    if (!V) return;
+    if (Math.abs(y - d.y0) > DRAG_SLOP || Math.abs(x - d.x0) > DRAG_SLOP) d.moved = true;
+    if (!d.moved) return;
+    const maxScroll = Math.max(0, V.contentH - V.h);
+    if (d.onThumb) {
+      // slider: map finger position along the track to scroll position
+      const track = V.h - 40;
+      const frac = clamp((y - V.y - 20) / track, 0, 1);
+      G.shopScroll = frac * maxScroll;
+    } else {
+      // flick the list itself
+      G.shopScroll = clamp(d.scroll0 - (y - d.y0), 0, maxScroll);
+      const dt = Math.max(0.001, G.time - d.lastT);
+      d.vel = -(y - d.lastY) / dt;
+      d.lastY = y; d.lastT = G.time;
+    }
+  }
+
+  function onPointerUp(e) {
+    if (G.holdId) { G.holdId = null; G.holdT = 0; return; }
+    if (!G.drag) return;
+    e.preventDefault();
+    const d = G.drag;
+    const { x, y } = toLogical(e);
+    if (!d.moved) fireHit(x, y);              // it was a tap after all
+    else if (!d.onThumb) G.scrollVel = clamp(d.vel, -2600, 2600);   // let it glide
+    G.drag = null;
+  }
+
+  // ---------------- Boot -----------------------------------------
+  function boot() {
+    cv = document.getElementById("c");
+    cx = cv.getContext("2d");
+    Store.load();
+    G.indexObj = L.buildDistractorIndex(20260713);
+    resize();
+    addEventListener("resize", resize);
+    cv.addEventListener("pointerdown", onPointer, { passive: false });
+    cv.addEventListener("pointermove", onPointerMove, { passive: false });
+    cv.addEventListener("pointerup", onPointerUp, { passive: false });
+    cv.addEventListener("pointercancel", () => { G.drag = null; }, { passive: false });
+    cv.addEventListener("contextmenu", e => e.preventDefault());
+    addEventListener("error", ev => { if (!G.fatal) G.fatal = String(ev.message || ev.error || "unknown error"); });
+    document.addEventListener("visibilitychange", () => { if (document.hidden) Store.save(); });
+    requestAnimationFrame(frame);
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
+  else boot();
+
+  // Test hook: the exact inverse of toLogical(), so tests tap real screen points.
+  function toClient(lx, ly) {
+    const dpr = Math.min(window.devicePixelRatio || 1, 3);
+    return { x: (lx * S + OX) / dpr, y: (ly * S + OY) / dpr };
+  }
+  return { G, Store, hits: () => hits, toClient };
+})(
+  typeof WW_DATA !== "undefined" ? WW_DATA : null,
+  typeof WW_LOGIC !== "undefined" ? WW_LOGIC : null
+);
+
+</script>
+</body>
+</html>
