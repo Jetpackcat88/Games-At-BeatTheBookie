@@ -94,6 +94,12 @@
   #overMsg{font-size:clamp(15px,3.6vmin,19px);font-weight:bold;color:var(--gold);}
   .hidden{display:none !important;}
   @media (prefers-reduced-motion:reduce){*{animation:none !important;}}
+  /* phones held sideways: let menus use the whole screen and scroll, so buttons are never cut off */
+  @media (orientation:landscape) and (max-height:520px){
+    .overlay{position:fixed;inset:0;overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y;justify-content:flex-start;padding:10px;border-radius:0;z-index:20;}
+    .overlay > .card{margin:auto 0;flex-shrink:0;}
+  }
+
 </style>
 </head>
 <body>

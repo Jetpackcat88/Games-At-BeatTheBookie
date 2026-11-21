@@ -3118,8 +3118,8 @@ const WW_GAME = (function (DATA, L) {
     const cols = 5, size = 58, gap = 10;
     const gx = (W - (cols * size + (cols - 1) * gap)) / 2, gy = 230;
     for (let i = 0; i < 26; i++) {
-      const r = Math.floor(i / cols), c = i % cols;
-      const x = gx + c * (size + gap), y = gy + r * (size + gap);
+      const r = Math.floor(i / cols), c = i === 25 ? 2 : i % cols;   // Z sits between ⌫ and Done
+      const x = gx + c * (size + gap), y = gy + r * (size + gap) + (i === 25 ? 4 : 0);
       button(x, y, size, size, letters[i], () => {
         if (G.nameDraft.length < 9) { G.nameDraft += letters[i]; Audio2.play("tick"); }
       }, { px: 26, id: "L" + letters[i] });

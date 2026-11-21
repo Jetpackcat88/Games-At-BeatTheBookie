@@ -82,6 +82,12 @@
   #newBest{color:#1d8a34;font-weight:800;}
   .hidden{display:none !important;}
   @media (prefers-reduced-motion:reduce){*{animation:none !important;transition:none !important;}}
+  /* phones held sideways: let menus use the whole screen and scroll, so buttons are never cut off */
+  @media (orientation:landscape) and (max-height:520px){
+    .overlay{position:fixed;inset:0;overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y;justify-content:flex-start;padding:10px;border-radius:0;z-index:20;}
+    .overlay > .card{margin:auto 0;flex-shrink:0;}
+  }
+
 </style>
 </head>
 <body>
@@ -577,6 +583,7 @@ function togglePause(){
   if (state === "playing"){ state = "paused"; pauseScreen.classList.remove("hidden"); }
   else if (state === "paused"){ state = "playing"; pauseScreen.classList.add("hidden"); lastTick = performance.now(); }
 }
+document.addEventListener("visibilitychange", () => { if (document.hidden && state === "playing") togglePause(); });
 $("startBtn").addEventListener("click", () => { sndClick(); startGame(); });
 $("againBtn").addEventListener("click", () => { sndClick(); startGame(); });
 $("resumeBtn").addEventListener("click", () => { sndClick(); togglePause(); });
@@ -1255,6 +1262,7 @@ function frame(now){
   lastFrame = now;
 
   if (state === "playing"){
+    if (now - lastTick > 600) lastTick = now - tickInterval;  // came back from another tab: don't fast-forward
     while (now - lastTick >= tickInterval){
       lastTick += tickInterval;
       tick(now);
