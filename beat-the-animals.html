@@ -93,7 +93,7 @@ function animalName(info) { return (info.legend ? "Legend " : "") + ANIMALS[info
 
 /* ---------------- save ---------------- */
 const SAVE_KEY = "beatTheAnimals.v1";
-const S = { coins: 0, sword: 0, shield: 0, armour: 0, maxLevel: 1, muted: false, beat: [], v: 3 };
+const S = { coins: 0, sword: 0, shield: 0, armour: 0, maxLevel: 1, muted: false, beat: [], v: 3, use: { sword: 0, shield: 0, armour: 0 } };
 function clampInt(v, lo, hi, def) { v = Math.floor(Number(v)); return Number.isFinite(v) ? Math.max(lo, Math.min(hi, v)) : def; }
 (function load() {
   let d = null;
@@ -103,6 +103,7 @@ function clampInt(v, lo, hi, def) { v = Math.floor(Number(v)); return Number.isF
   S.sword = clampInt(d.sword, 0, MATS.length - 1, 0);
   S.shield = clampInt(d.shield, 0, MATS.length - 1, 0);
   S.armour = clampInt(d.armour, 0, MATS.length - 1, 0);
+  for (const it of ["sword", "shield", "armour"]) S.use[it] = d.use && d.use[it] != null ? clampInt(d.use[it], 0, S[it], S[it]) : S[it];
   S.maxLevel = clampInt(d.maxLevel, 1, 100000, 1);
   S.muted = !!d.muted;
   S.coins += clampInt(d.chests, 0, 9999, 0) * OLD_CHEST_VALUE;   // chests were removed: unopened ones become coins
@@ -312,7 +313,14 @@ let animals = [], parts = [], pops = [], flyCoins = [];
 const L = { n: 1, kind: 0, queue: 0, spawnT: 0, earned: 0, beaten: 0, total: 1, doneT: 0, mult: 1, legend: false, intro: "", introSub: "", introT: 0 };
 function baseState() { return state === "shop" ? prevState : state; }
 
-function maxHp() { return ARMOUR_HP[S.armour]; }
+function maxHp() { return ARMOUR_HP[S.use.armour]; }
+function chooseGear(it, d) {
+  const n = Math.max(0, Math.min(S[it], S.use[it] + d));
+  if (n === S.use[it]) return;
+  S.use[it] = n; sfx.click(); save();
+  if (it === "armour") P.hp = Math.min(P.hp, maxHp());
+  shopMsg = { text: "Now using " + MATS[n].name + " " + ITEM_NAMES[it].toLowerCase() + "!", t: 1.6 };
+}
 function startLevel(n) {
   ensureAudio(); sfx.click();
   const info = levelInfo(n), A = ANIMALS[info.kind];
@@ -442,7 +450,8 @@ function buy(item) {
   const c = COSTS[tier + 1];
   if (S.coins < c) { sfx.no(); shopMsg = { text: "Not enough coins yet. Keep beating animals!", t: 1.8 }; return; }
   S.coins -= c; S[item]++;
-  if (item === "armour") P.hp = Math.min(maxHp(), P.hp + (ARMOUR_HP[S.armour] - ARMOUR_HP[S.armour - 1]));
+  const before = S.use[item]; S.use[item] = S[item];
+  if (item === "armour") P.hp = Math.min(maxHp(), P.hp + (ARMOUR_HP[S.use.armour] - ARMOUR_HP[before]));
   sfx.buy();
   shopMsg = { text: (MATS[S[item]].secret ? "SECRET! " : "") + "You got " + MATS[S[item]].name + " " + ITEM_NAMES[item].toLowerCase() + "!", t: 2.2 };
   burst(W / 2, 250, "#ffd23f", 24, 260);
@@ -505,7 +514,7 @@ function beatAnimal(a) {
 }
 
 function doHit() {
-  const dmg = SWORD_DMG[S.sword];
+  const dmg = SWORD_DMG[S.use.sword];
   let any = false;
   for (const a of animals) {
     if (a.dead) continue;
@@ -516,7 +525,7 @@ function doHit() {
       a.kb = P.face * 190 * Math.min(1, 50 / A.w);
       if (a.k <= 3 && a.st === "windup") { a.st = "back"; a.stT = 0.3; }
       popup(a.x + rand(-10, 10), animalTop(a) - 22, String(dmg), "#ffffff", 26);
-      burst(a.x - P.face * A.w * 0.3, GROUND - a.alt - A.h * 0.5, MATS[S.sword].l, 7, 220);
+      burst(a.x - P.face * A.w * 0.3, GROUND - a.alt - A.h * 0.5, MATS[S.use.sword].l, 7, 220);
       if (a.hp <= 0) beatAnimal(a);
     }
   }
@@ -527,17 +536,17 @@ function hitPlayer(a) {
   const dmgIn = A.dmg * (a.mult || 1);
   const facing = (a.x - P.x) * P.face > 0;
   if (P.block && facing) {
-    const d = dmgIn * (1 - SHIELD_BLOCK[S.shield] / 100);
+    const d = dmgIn * (1 - SHIELD_BLOCK[S.use.shield] / 100);
     P.hp -= d; P.blockFlash = 0.25;
     sfx.clang();
     burst(P.x + P.face * 26, GROUND - 52, "#fff6c2", 10, 240);
     popup(P.x + P.face * 10, GROUND - 130, d > 0 ? "Blocked! -" + fmt(d) : "Blocked!", "#9fe8ff", 22);
     P.kx = -P.face * 140;
     a.kb = P.face * 220 * Math.min(1, 60 / A.w);
-    const bounce = Math.round(SWORD_DMG[S.sword] * SHIELD_BOUNCE[S.shield]);
+    const bounce = Math.round(SWORD_DMG[S.use.sword] * SHIELD_BOUNCE[S.use.shield]);
     if (bounce > 0) {
       a.hp -= bounce; a.flash = 0.15;
-      popup(a.x, animalTop(a) - 22, "BOUNCE " + bounce + "!", MATS[S.shield].l, 24);
+      popup(a.x, animalTop(a) - 22, "BOUNCE " + bounce + "!", MATS[S.use.shield].l, 24);
       if (a.hp <= 0) beatAnimal(a);
     }
   } else {
@@ -1162,7 +1171,7 @@ function drawWorld() {
     drawHero(P.x, GROUND, P.face, {
       t: time, walkT: P.walkT, moving: P.moving && state === "play", hurt: P.hurt > 0 || state === "lose",
       swing: P.swingT > 0 ? 1 - P.swingT / SWING_DUR : null, block: P.block && state === "play", blockFlash: P.blockFlash > 0,
-      sword: S.sword, shield: S.shield, armour: S.armour
+      sword: S.use.sword, shield: S.use.shield, armour: S.use.armour
     });
   }
   for (const p of parts) {
@@ -1250,12 +1259,12 @@ function drawTouchControls() {
   let b = TB.block;
   ctx.fillStyle = held("block") ? "rgba(80,170,255,0.8)" : "rgba(80,170,255,0.5)"; circle(b.x, b.y, b.r);
   ctx.strokeStyle = "rgba(255,255,255,0.6)"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, 7); ctx.stroke();
-  ctx.save(); ctx.translate(b.x, b.y - 6); ctx.scale(0.8, 0.8); drawShield(S.shield, time); ctx.restore();
+  ctx.save(); ctx.translate(b.x, b.y - 6); ctx.scale(0.8, 0.8); drawShield(S.use.shield, time); ctx.restore();
   txt("BLOCK", b.x, b.y + 30, 12, "#fff", "center", "rgba(0,0,0,0.4)", 3);
   b = TB.swing;
   ctx.fillStyle = held("swing") ? "rgba(255,90,106,0.8)" : "rgba(255,90,106,0.55)"; circle(b.x, b.y, b.r);
   ctx.strokeStyle = "rgba(255,255,255,0.6)"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, 7); ctx.stroke();
-  ctx.save(); ctx.translate(b.x - 18, b.y + 16); ctx.rotate(-0.8); ctx.scale(0.7, 0.7); drawSword(S.sword, time); ctx.restore();
+  ctx.save(); ctx.translate(b.x - 18, b.y + 16); ctx.rotate(-0.8); ctx.scale(0.7, 0.7); drawSword(S.use.sword, time); ctx.restore();
   txt("SWING", b.x, b.y + 38, 13, "#fff", "center", "rgba(0,0,0,0.4)", 3);
 }
 function bigButton(x, y, w, h, label, color, fn, size) {
@@ -1272,7 +1281,7 @@ function drawTitle() {
   txt("and Beat the Animals", 0, 18, 56, "#ffd23f", "center", "#5a3a00", 11);
   txt("in the Jungle", 0, 66, 36, "#b8f28f", "center", "#13301d", 9);
   ctx.restore();
-  drawHero(110, GROUND, 1, { t: time, sword: S.sword, shield: S.shield, armour: S.armour, swing: (time % 1.8) / 0.5 < 1 ? (time % 1.8) / 0.5 : null, scale: 1.4 });
+  drawHero(110, GROUND, 1, { t: time, sword: S.use.sword, shield: S.use.shield, armour: S.use.armour, swing: (time % 1.8) / 0.5 < 1 ? (time % 1.8) / 0.5 : null, scale: 1.4 });
   ctx.save(); ctx.translate(830, GROUND); ctx.scale(-1.3, 1.3); drawAnimalBody(2, time, "approach", false, 0); ctx.restore();
   ctx.save(); ctx.translate(905, GROUND); ctx.scale(-1.2, 1.2); drawAnimalBody(0, time * 0.7, "rest", false, 0); ctx.restore();
   bigButton(W / 2 - 120, 232, 240, 66, "PLAY", "#2f9e55", goLevels, 32);
@@ -1394,13 +1403,22 @@ function drawShop() {
   ];
   const y = PY + 76, h = 284, gap = 18, w = (PW - 48 - gap * 2) / 3;
   items.forEach((it, i) => {
-    const x = PX + 24 + i * (w + gap), tier = S[it.key], maxed = tier >= SHOP_TOP;
+    const x = PX + 24 + i * (w + gap), tier = S[it.key], maxed = tier >= SHOP_TOP, use = S.use[it.key];
     ctx.fillStyle = "#1f5236"; rr(ctx, x, y, w, h, 16); ctx.fill();
-    ctx.strokeStyle = MATS[tier].secret ? "#ff9ad8" : "#2f7a48"; ctx.lineWidth = 2; ctx.stroke();
-    txt(it.title, x + w / 2, y + 26, 22, "#fff", "center");
-    ctx.save(); ctx.translate(x + w / 2, y + 96); it.draw(tier); ctx.restore();
-    txt("Now: " + MATS[tier].name, x + w / 2, y + 154, 17, MATS[tier].secret ? "#ff9ad8" : "#ffffff", "center");
-    txt(it.stat(tier), x + w / 2, y + 178, 14, "#eaffe0", "center");
+    ctx.strokeStyle = MATS[use].secret ? "#ff9ad8" : "#2f7a48"; ctx.lineWidth = 2; ctx.stroke();
+    txt(it.title, x + w / 2, y + 22, 22, "#fff", "center");
+    ctx.save(); ctx.translate(x + w / 2, y + 92); it.draw(use); ctx.restore();
+    if (tier > 0) {
+      [[x + 10, -1, use > 0], [x + w - 50, 1, use < tier]].forEach(([bx, d, on]) => {
+        ctx.fillStyle = on ? "#3a7bd5" : "rgba(255,255,255,0.1)"; rr(ctx, bx, y + 64, 40, 54, 12); ctx.fill();
+        ctx.fillStyle = on ? "#fff" : "rgba(255,255,255,0.3)";
+        ctx.beginPath(); ctx.moveTo(bx + 20 + d * 9, y + 91); ctx.lineTo(bx + 20 - d * 7, y + 79); ctx.lineTo(bx + 20 - d * 7, y + 103); ctx.closePath(); ctx.fill();
+        if (on) addBtn(bx, y + 64, 40, 54, () => chooseGear(it.key, d));
+      });
+      txt("◀ ▶ choose any you own", x + w / 2, y + 44, 12, "#9fd0ff", "center");
+    }
+    txt("Using: " + MATS[use].name, x + w / 2, y + 154, 17, MATS[use].secret ? "#ff9ad8" : "#ffffff", "center");
+    txt(it.stat(use), x + w / 2, y + 178, 14, "#eaffe0", "center");
     if (maxed) txt("The best there is!", x + w / 2, y + 204, 15, "#ffd23f", "center");
     else if (MATS[tier + 1].secret) txt("Next: ??? a secret one!", x + w / 2, y + 204, 15, "#ff9ad8", "center");
     else txt("Next: " + MATS[tier + 1].name + " · " + it.stat(tier + 1), x + w / 2, y + 204, 14, "#b8f28f", "center");
