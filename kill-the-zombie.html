@@ -69,8 +69,10 @@ const PETS = [
 const DECO = {
   body:    { label: "Stickman", base: 6, opts: ["#1d1b2e", "#2f6fe0", "#8a3fd1", "#e0479a", "#d63a3a", "#2f9e55", "#d4a017", "#f4f4f4"],
              names: ["Black", "Blue", "Purple", "Pink", "Red", "Green", "Golden stickman", "White stickman"] },
-  hat:     { label: "Hat", base: 6, opts: ["none", "crown", "cap", "wizard", "bow", "helmet", "unicorn", "pirate", "tophat", "halo", "flower", "ninja", "santa"],
-             names: ["No hat", "Crown", "Cap", "Wizard hat", "Bow", "Knight helmet", "Unicorn horn", "Pirate hat", "Top hat", "Halo", "Flower crown", "Ninja headband", "Santa hat"] },
+  outfit:  { label: "Costume", base: 6, opts: ["none", "knight", "ninja", "superhero", "princess", "pirate", "astronaut", "dino", "robot", "skeleton", "santa", "unicorn"],
+             names: ["No costume", "Knight armour", "Ninja suit", "Superhero suit", "Princess dress", "Pirate coat", "Astronaut suit", "Dinosaur onesie", "Robot suit", "Skeleton suit", "Santa suit", "Unicorn onesie"] },
+  hat:     { label: "Hat", base: 6, free: [13, 16], opts: ["none", "crown", "cap", "wizard", "bow", "helmet", "unicorn", "pirate", "tophat", "halo", "flower", "ninja", "santa", "viking", "cowboy", "bunny", "party"],
+             names: ["No hat", "Crown", "Cap", "Wizard hat", "Bow", "Knight helmet", "Unicorn horn", "Pirate hat", "Top hat", "Halo", "Flower crown", "Ninja headband", "Santa hat", "Viking helmet", "Cowboy hat", "Bunny ears", "Party hat"] },
   cape:    { label: "Cape", base: 6, opts: ["none", "#d63a3a", "#2f6fe0", "#8a3fd1", "#e0479a", "#f2b632", "rainbow", "galaxy"],
              names: ["No cape", "Red cape", "Blue cape", "Purple cape", "Pink cape", "Gold cape", "Rainbow cape", "Galaxy cape"] },
   handle:  { label: "Handle", base: 6, opts: ["#7a4a22", "#c43030", "#2a5fc4", "#7d3cc4", "#e05aa6", "#2a2a2a", "#f2b632", "#7fd8ff"],
@@ -82,7 +84,9 @@ const DECO = {
   trail:   { label: "Trail", base: 1, opts: ["none", "sparkle", "fire", "rainbow", "hearts", "stars"],
              names: ["No trail", "Sparkle trail", "Fire trail", "Rainbow trail", "Heart trail", "Star trail"] }
 };
-const DECO_KEYS = ["body", "hat", "cape", "handle", "gem", "pattern", "trail"];
+const DECO_KEYS = ["body", "outfit", "hat", "cape", "handle", "gem", "pattern", "trail"];
+const DECO_PAGES = [["body", "outfit", "hat", "cape"], ["handle", "gem", "pattern", "trail"]];
+let decoPage = 0;
 
 const WORLDS = [
   { name: "Graveyard",      sky: ["#151233", "#2d2560", "#4c3f84"], hills: ["#251f4d", "#2e2758"], ground: ["#5a3d2b", "#33221a"], grass: "#3e8a4c", grass2: "#4fa35c",
@@ -128,17 +132,19 @@ function lvCfg(n) {
 const SAVE_KEY = "killTheZombie.v1";
 const S = {
   coins: 0, sword: 0, coinLvl: 1, hearts: HEART_START, best: 0, muted: false,
-  deco: { body: 0, hat: 0, cape: 0, handle: 0, gem: 0, pattern: 0, trail: 0 },
-  maxLevel: 1, total: 0, swingLvl: 0, reachLvl: 0, critLvl: 0, pets: [], unlocked: [], seenSword: 6
+  deco: { body: 0, outfit: 0, hat: 0, cape: 0, handle: 0, gem: 0, pattern: 0, trail: 0 },
+  maxLevel: 1, total: 0, swingLvl: 0, reachLvl: 0, critLvl: 0, pets: [], unlocked: [], seenSword: 6, equip: -1
 };
 function clampInt(v, lo, hi, def) { v = Math.floor(Number(v)); return Number.isFinite(v) ? Math.max(lo, Math.min(hi, v)) : def; }
-function isUnlocked(key, idx) { return idx < DECO[key].base || S.unlocked.indexOf(key + ":" + idx) >= 0; }
+function isUnlocked(key, idx) { const D = DECO[key]; return idx < D.base || (D.free && D.free.indexOf(idx) >= 0) || S.unlocked.indexOf(key + ":" + idx) >= 0; }
+function secretCount() { return DECO_KEYS.reduce((n, k) => n + DECO[k].opts.length - DECO[k].base - (DECO[k].free ? DECO[k].free.length : 0), 0); }
 (function load() {
   let d = null;
   try { d = JSON.parse(localStorage.getItem(SAVE_KEY)); } catch (e) { d = null; }
   if (!d || typeof d !== "object") return;
   S.coins = clampInt(d.coins, 0, 1e12, 0);
   S.sword = clampInt(d.sword, 0, SWORDS.length - 1, 0);
+  S.equip = d.equip == null ? S.sword : clampInt(d.equip, 0, S.sword, S.sword);
   S.coinLvl = clampInt(d.coinLvl, 1, COIN_MAX, 1);
   S.hearts = clampInt(d.hearts, HEART_START, HEART_MAX, HEART_START);
   S.best = clampInt(d.best, 0, 1e9, 0);
@@ -156,6 +162,7 @@ function isUnlocked(key, idx) { return idx < DECO[key].base || S.unlocked.indexO
   }
   for (const k of DECO_KEYS) if (!isUnlocked(k, S.deco[k])) S.deco[k] = 0;
 })();
+if (S.equip < 0 || S.equip > S.sword) S.equip = S.sword;
 let dirty = false, saveTimer = 0;
 function save() { dirty = false; try { localStorage.setItem(SAVE_KEY, JSON.stringify(S)); } catch (e) {} }
 function lockedList() {
@@ -451,11 +458,11 @@ const P = { x: W / 2, alt: 0, vy: 0, face: 1, swingT: 0, swingDur: 0.32, swingHi
 const SPEED = 240;
 let zombies = [], coins = [], parts = [], pops = [], shots = [], waves = [], boxes = [], bolts = [], banners = [], pets = [];
 const LV = { n: 1, world: 0, cfg: lvCfg(1), queue: 0, kills: 0, spawnT: 1, earned: 0, bossSpawned: false, bossDone: false, doneT: 0, revived: false, combo: 0, comboT: 0, digT: 8, newWorld: -1 };
-let reveals = [], afterReveal = null;
+let reveals = [], afterReveal = null, drops = [];
 
 function inTitle() { return state === "title" || ((state === "shop" || state === "reveal") && prevState === "title"); }
 function curWorld() { return inTitle() ? lvCfg(selLevel).world : LV.world; }
-function swordDmg() { return SWORDS[S.sword].dmg * (P.pow.giant > 0 ? 2 : 1); }
+function swordDmg() { return SWORDS[S.equip].dmg * (P.pow.giant > 0 ? 2 : 1); }
 function reach() { return (74 + S.reachLvl * 14) * (P.pow.giant > 0 ? 1.5 : 1); }
 function swingDur() { return Math.max(0.17, 0.32 - S.swingLvl * 0.025) * (P.pow.speed > 0 ? 0.7 : 1); }
 function critChance() { return S.critLvl * 0.05; }
@@ -468,7 +475,7 @@ function startLevel(n) {
   ensureAudio(); sfx.click();
   const cfg = lvCfg(n);
   LV.n = n; LV.world = cfg.world; LV.cfg = cfg; LV.queue = cfg.count; LV.kills = 0; LV.spawnT = 1.0; LV.earned = 0;
-  LV.bossSpawned = false; LV.bossDone = !cfg.bossLevel; LV.doneT = 0; LV.revived = false; LV.combo = 0; LV.comboT = 0; LV.digT = 8; LV.newWorld = -1;
+  LV.bossSpawned = false; LV.bossDone = !cfg.bossLevel; LV.bonus = false; LV.bonusDone = false; LV.bonusT = 0; LV.dropT = 0; drops = []; LV.doneT = 0; LV.revived = false; LV.combo = 0; LV.comboT = 0; LV.digT = 8; LV.newWorld = -1;
   zombies = []; coins = []; parts = []; pops = []; shots = []; waves = []; boxes = []; bolts = []; banners = [];
   P.x = W / 2; P.alt = 0; P.vy = 0; P.face = 1; P.hp = S.hearts; P.inv = 1; P.swingT = 0; P.kx = 0; P.hurt = 0; P.spinT = 0;
   for (const k in P.pow) P.pow[k] = 0;
@@ -596,7 +603,7 @@ function buySword() {
   if (S.sword >= SWORDS.length - 1) return;
   const c = SWORDS[S.sword + 1].cost;
   if (S.coins < c) return deny();
-  S.coins -= c; S.sword++;
+  S.coins -= c; S.sword++; S.equip = S.sword;
   bought("You got the " + SWORDS[S.sword].name + " sword!");
   if (S.sword >= NEW_SWORD_FROM && S.sword > S.seenSword) { S.seenSword = S.sword; save(); showReveal({ kind: "sword", idx: S.sword }); }
 }
@@ -618,6 +625,11 @@ function buyPet(i) {
   bought("A new friend!");
   makePets();
   showReveal({ kind: "pet", idx: i });
+}
+function equipSword(i) {
+  if (i > S.sword || i === S.equip) return;
+  S.equip = i; sfx.click(); save();
+  shopMsg = { text: "Now using the " + SWORDS[i].name + " sword!", t: 1.6 };
 }
 function canAffordAny() {
   return (S.sword < SWORDS.length - 1 && S.coins >= SWORDS[S.sword + 1].cost) ||
@@ -783,7 +795,7 @@ function chainFrom(z0, dmg, hitSet) {
   if (near.length) sfx.zap();
 }
 function hitArea(dir) {
-  const dmg = swordDmg(), M = SWORDS[S.sword], power = M.power;
+  const dmg = swordDmg(), M = SWORDS[S.equip], power = M.power;
   const hitSet = new Set();
   let any = false;
   for (const z of zombies.slice()) {
@@ -999,7 +1011,9 @@ function update(dt) {
   if (LV.comboT === 0) LV.combo = 0;
   LV.spawnT -= dt;
   const alive = zombies.reduce((n, z) => n + (z.dead ? 0 : 1), 0);
-  if (LV.queue > 0) {
+  if (LV.bonus) {
+    updateBonus(dt);
+  } else if (LV.queue > 0) {
     if (LV.spawnT <= 0) {
       if (alive < LV.cfg.maxAlive) spawnZombie();
       LV.spawnT = LV.cfg.gap * rand(0.8, 1.2);
@@ -1009,7 +1023,7 @@ function update(dt) {
   } else if (LV.bossDone && alive === 0) {
     LV.doneT += dt;
     if (LV.doneT > 0.8) for (const b of boxes) if (b.t > 0.4) b.x += (P.x - b.x) * Math.min(1, dt * 3);
-    if (LV.doneT > 2.4 && !boxes.length) levelComplete();
+    if (LV.doneT > 2.4 && !boxes.length) { if (LV.cfg.bossLevel && !LV.bonusDone) startBonus(); else levelComplete(); }
     else if (LV.doneT > 6 && boxes.length) { const bs = boxes; boxes = []; for (const b of bs) openBox(b); }
   }
 
@@ -1126,6 +1140,45 @@ function updatePets(dt) {
     }
   });
 }
+function startBonus() {
+  LV.bonus = true; LV.bonusDone = true; LV.bonusT = 15; LV.dropT = 0; drops = [];
+  banner("BONUS ROUND!", "Catch the falling treasure!", "#ff9ad8", 2.6);
+  sfx.fanfare(); confetti(W / 2, 120, 60);
+}
+function updateBonus(dt) {
+  LV.bonusT -= dt; LV.dropT -= dt;
+  if (LV.bonusT > 0 && LV.dropT <= 0) {
+    LV.dropT = rand(0.08, 0.16);
+    const r = Math.random();
+    const kind = r < 0.03 ? "star" : r < 0.1 ? "present" : r < 0.3 ? "gem" : "coin";
+    drops.push({ x: rand(40, W - 40), y: -20, vy: rand(140, 260), kind, spin: Math.random() * 6, col: pick(RAINBOW) });
+  }
+  for (const d of drops) {
+    d.vy += 260 * dt; d.y += d.vy * dt; d.spin += dt * 6;
+    const py = GROUND - P.alt - 50;
+    if (Math.abs(d.x - P.x) < 36 && Math.abs(d.y - py) < 62) {
+      d.got = true;
+      const m = S.coinLvl * LV.cfg.mult * (P.pow.double > 0 ? 2 : 1);
+      if (d.kind === "coin") { S.coins += m; LV.earned += m; popup(d.x, d.y - 10, "+" + fmtNum(m), "#ffd23f", 18); sfx.coin(time); }
+      else if (d.kind === "gem") { const v = m * 5; S.coins += v; LV.earned += v; popup(d.x, d.y - 10, "+" + fmtNum(v), "#7fe8ff", 22); sfx.crit(); burst(d.x, d.y, "#7fe8ff", 10, 200); }
+      else if (d.kind === "present") { openBox({ x: d.x, y: d.y, t: 1 }); }
+      else { const k = pick(Object.keys(POWERS)); P.pow[k] = POWERS[k].dur; banner(POWERS[k].name, POWERS[k].sub, POWERS[k].col, 1.4); sfx.power(); }
+      dirty = true; coinBump = 1;
+      if (state !== "play") break;
+    } else if (d.y > GROUND - 6) { d.got = true; burst(d.x, GROUND - 6, d.kind === "gem" ? "#7fe8ff" : "#ffd23f", 4, 120); }
+  }
+  drops = drops.filter(d => !d.got);
+  if (LV.bonusT <= 0 && !drops.length) { LV.bonus = false; LV.doneT = 0; levelComplete(); }
+}
+function drawDrops() {
+  for (const d of drops) {
+    if (d.kind === "coin") drawCoin(d.x, d.y, 11, d.spin);
+    else if (d.kind === "gem") { ctx.save(); ctx.translate(d.x, d.y); ctx.rotate(Math.sin(d.spin) * 0.3); ctx.fillStyle = "#7fe8ff"; ctx.beginPath(); ctx.moveTo(0, -12); ctx.lineTo(10, -3); ctx.lineTo(0, 12); ctx.lineTo(-10, -3); ctx.closePath(); ctx.fill(); ctx.fillStyle = "rgba(255,255,255,0.7)"; ctx.beginPath(); ctx.moveTo(0, -12); ctx.lineTo(4, -3); ctx.lineTo(-4, -3); ctx.fill(); ctx.restore(); }
+    else if (d.kind === "present") { ctx.save(); ctx.translate(d.x, d.y); ctx.rotate(Math.sin(d.spin) * 0.2); ctx.fillStyle = d.col; rr(ctx, -14, -12, 28, 26, 4); ctx.fill(); ctx.fillStyle = "#ffffff"; ctx.fillRect(-3, -12, 6, 26); ctx.fillRect(-14, -2, 28, 6); ctx.beginPath(); ctx.ellipse(-6, -15, 6, 4, -0.4, 0, 7); ctx.ellipse(6, -15, 6, 4, 0.4, 0, 7); ctx.fill(); ctx.restore(); }
+    else { ctx.save(); ctx.translate(d.x, d.y); ctx.rotate(d.spin); ctx.shadowColor = "#ffe14d"; ctx.shadowBlur = 14; ctx.fillStyle = "#ffe14d"; starPath(ctx, 0, 0, 14, 6, 5); ctx.fill(); ctx.restore(); }
+  }
+  if (LV.bonus && LV.bonusT > 0) txt("BONUS " + Math.ceil(LV.bonusT), W / 2, 96, 30, "#ff9ad8", "center", "#1a1535", 6);
+}
 function levelComplete() {
   for (const c of coins) S.coins += c.v;
   coins = [];
@@ -1240,6 +1293,20 @@ function drawHat(type, hy, t) {
     const wv = Math.sin(t * 8) * 3;
     ctx.beginPath(); ctx.moveTo(-13, hy - 6); ctx.lineTo(-30, hy - 12 + wv); ctx.lineTo(-28, hy - 4 + wv); ctx.closePath(); ctx.fill();
     ctx.beginPath(); ctx.moveTo(-13, hy - 5); ctx.lineTo(-26, hy + 2 - wv); ctx.lineTo(-24, hy + 7 - wv); ctx.closePath(); ctx.fill();
+  } else if (type === "viking") {
+    ctx.fillStyle = "#f3ead2"; ctx.beginPath(); ctx.moveTo(-12, hy - 8); ctx.quadraticCurveTo(-24, hy - 12, -22, hy - 30); ctx.quadraticCurveTo(-18, hy - 16, -8, hy - 12); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(12, hy - 8); ctx.quadraticCurveTo(24, hy - 12, 22, hy - 30); ctx.quadraticCurveTo(18, hy - 16, 8, hy - 12); ctx.fill();
+    ctx.fillStyle = "#9aa3ad"; ctx.beginPath(); ctx.arc(0, hy - 2, 15, Math.PI, Math.PI * 2); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = "#c4931b"; rr(ctx, -15, hy - 5, 30, 4, 2); ctx.fill(); ctx.fillRect(-1.5, hy - 17, 3, 12);
+  } else if (type === "cowboy") {
+    ctx.fillStyle = "#9a5a2a"; ell(0, hy - 9, 24, 5); rr(ctx, -11, hy - 26, 22, 18, 6); ctx.fill();
+    ctx.fillStyle = "#5a3418"; ctx.fillRect(-11, hy - 13, 22, 4);
+  } else if (type === "bunny") {
+    for (const sx of [-6, 6]) { ctx.fillStyle = "#ffffff"; ell(sx, hy - 28, 5.5, 15, sx * 0.03); ctx.fillStyle = "#ffb3d9"; ell(sx, hy - 27, 2.6, 10, sx * 0.03); }
+  } else if (type === "party") {
+    ctx.fillStyle = "#4db8ff"; ctx.beginPath(); ctx.moveTo(-10, hy - 9); ctx.lineTo(10, hy - 9); ctx.lineTo(2, hy - 38); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = "#ffe14d"; ctx.lineWidth = 2.5; line(-6, hy - 16, 7, hy - 20); line(-2, hy - 26, 5, hy - 29);
+    ctx.fillStyle = "#ff6f9c"; circle(2, hy - 39, 4);
   } else if (type === "santa") {
     ctx.fillStyle = "#d63a3a"; ctx.beginPath(); ctx.moveTo(-14, hy - 8); ctx.quadraticCurveTo(-2, hy - 40, 10, hy - 30); ctx.quadraticCurveTo(-4, hy - 30, 14, hy - 8); ctx.closePath(); ctx.fill();
     ctx.fillStyle = "#ffffff"; rr(ctx, -16, hy - 11, 32, 7, 3.5); ctx.fill(); circle(10, hy - 31, 5);
@@ -1258,6 +1325,46 @@ function drawCape(cc, shY, hipY, t, walkT, moving) {
   if (cc === "galaxy") { ctx.save(); ctx.clip(); ctx.fillStyle = "#fff"; for (let i = 0; i < 10; i++) circle(-24 + (i * 7) % 26, shY + ((i * 13) % 60), 0.8 + (i % 3) * 0.4); ctx.fillStyle = "rgba(180,120,255,0.5)"; circle(-14, shY + 30, 8); ctx.restore(); }
   ctx.strokeStyle = "rgba(0,0,0,0.25)"; ctx.lineWidth = 2; ctx.stroke();
 }
+const OUTFIT_LIMB = { knight: "#9aa3ad", ninja: "#1d1b2e", superhero: "#2f6fe0", pirate: "#5a3a22", astronaut: "#eef2f7", dino: "#4fbf5a", robot: "#8a939e", skeleton: "#f4f4f4", santa: "#d63a3a", unicorn: "#ffffff" };
+function drawOutfit(type, layer, y, t, step) {
+  const { hipY, neckY, shY, headY } = y;
+  const torso = (fill, edge) => { ctx.fillStyle = fill; rr(ctx, -11, neckY - 2, 22, hipY - neckY + 8, 7); ctx.fill(); if (edge) { ctx.strokeStyle = edge; ctx.lineWidth = 2; rr(ctx, -11, neckY - 2, 22, hipY - neckY + 8, 7); ctx.stroke(); } };
+  if (layer === "back") {
+    if (type === "astronaut") { ctx.fillStyle = "#b9c2cf"; rr(ctx, -19, shY - 4, 10, 28, 3); ctx.fill(); ctx.fillStyle = "#e84855"; circle(-14, shY + 2, 2); }
+    else if (type === "dino") {
+      ctx.fillStyle = "#4fbf5a"; ctx.beginPath(); ctx.moveTo(-6, hipY - 6); ctx.quadraticCurveTo(-26, hipY + 4, -38, -8 + Math.sin(t * 6) * 3); ctx.quadraticCurveTo(-22, hipY + 18, -4, hipY + 6); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = "#2f8a3a"; for (let k = 0; k < 5; k++) { const yy = neckY + 2 + k * 8; ctx.beginPath(); ctx.moveTo(-10, yy); ctx.lineTo(-17, yy + 4); ctx.lineTo(-10, yy + 8); ctx.fill(); }
+    } else if (type === "unicorn") { for (let k = 0; k < 6; k++) { ctx.strokeStyle = RAINBOW[k]; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(-6 - k, headY - 10 + k * 2); ctx.quadraticCurveTo(-16 - k, shY, -12 - k + Math.sin(t * 5 + k) * 2, shY + 14); ctx.stroke(); } }
+    else if (type === "pirate") { ctx.fillStyle = "#5a3a22"; ctx.beginPath(); ctx.moveTo(-10, hipY - 4); ctx.lineTo(-18, hipY + 22); ctx.lineTo(-4, hipY + 18); ctx.closePath(); ctx.fill(); }
+    else if (type === "superhero") { ctx.fillStyle = "#d63a3a"; ctx.beginPath(); ctx.moveTo(3, shY - 4); ctx.lineTo(-5, shY - 4); ctx.quadraticCurveTo(-18, hipY - 8, -26 + Math.sin(t * 6) * 4, -12); ctx.lineTo(-6, -10); ctx.closePath(); ctx.fill(); }
+  } else if (layer === "front") {
+    if (type === "knight") { torso("#c3cad3", "#6a737d"); ctx.fillStyle = "#9aa3ad"; ell(3, shY, 9, 6); ctx.strokeStyle = "#6a737d"; ctx.lineWidth = 1.5; line(0, neckY + 2, 0, hipY + 2); ctx.fillStyle = "#5a5f66"; ctx.fillRect(-11, hipY - 6, 22, 4); }
+    else if (type === "ninja") { torso("#1d1b2e"); ctx.fillStyle = "#d63a3a"; ctx.fillRect(-11, hipY - 7, 22, 4); ctx.beginPath(); ctx.moveTo(-10, hipY - 5); ctx.lineTo(-18, hipY + 6); ctx.lineTo(-14, hipY + 6); ctx.fill(); }
+    else if (type === "superhero") { torso("#2f6fe0", "#1a4aa8"); ctx.fillStyle = "#ffd23f"; starPath(ctx, 1, shY + 8, 7, 3, 5); ctx.fill(); ctx.fillStyle = "#d63a3a"; ctx.fillRect(-11, hipY - 6, 22, 4); }
+    else if (type === "princess") {
+      ctx.fillStyle = "#ff77cc"; rr(ctx, -9, neckY, 18, hipY - neckY - 6, 6); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(-9, hipY - 10); ctx.lineTo(9, hipY - 10); ctx.lineTo(24, -10); ctx.quadraticCurveTo(0, -4, -24, -10); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = "#ffd6ec"; for (let k = 0; k < 6; k++) circle(-16 + k * 6.5, -14 - (k % 2) * 6, 1.8);
+      ctx.fillStyle = "#ffb3d9"; circle(3, shY - 1, 6);
+      ctx.fillStyle = "#ffd23f"; ctx.fillRect(-9, hipY - 12, 18, 3);
+    }
+    else if (type === "pirate") { torso("#6a4428", "#3a2414"); ctx.fillStyle = "#ffffff"; ctx.beginPath(); ctx.moveTo(-4, neckY); ctx.lineTo(4, neckY); ctx.lineTo(0, neckY + 12); ctx.fill(); ctx.fillStyle = "#ffd23f"; for (let k = 0; k < 3; k++) circle(5, neckY + 14 + k * 8, 1.8); ctx.fillStyle = "#1d1b2e"; ctx.fillRect(-11, hipY - 6, 22, 4); }
+    else if (type === "astronaut") { torso("#eef2f7", "#9aa3ad"); ctx.fillStyle = "#3a7bd5"; rr(ctx, -6, shY + 2, 12, 10, 2); ctx.fill(); ctx.fillStyle = "#e84855"; circle(-3, shY + 7, 1.6); ctx.fillStyle = "#5ddc6a"; circle(3, shY + 7, 1.6); }
+    else if (type === "dino") { torso("#4fbf5a"); ctx.fillStyle = "#c9f0a8"; rr(ctx, -5, neckY + 4, 12, hipY - neckY - 2, 5); ctx.fill(); }
+    else if (type === "robot") { ctx.fillStyle = "#aeb6c2"; rr(ctx, -13, neckY - 2, 26, hipY - neckY + 8, 3); ctx.fill(); ctx.strokeStyle = "#5a636e"; ctx.lineWidth = 2; rr(ctx, -13, neckY - 2, 26, hipY - neckY + 8, 3); ctx.stroke(); ctx.fillStyle = "#e84855"; circle(-5, shY + 4, 2.5); ctx.fillStyle = "#5ddc6a"; circle(1, shY + 4, 2.5); ctx.fillStyle = "#ffd23f"; circle(7, shY + 4, 2.5); ctx.strokeStyle = "#5a636e"; line(-8, shY + 14, 8, shY + 14); line(-8, shY + 19, 8, shY + 19); }
+    else if (type === "skeleton") { torso("#1d1b2e"); ctx.strokeStyle = "#f4f4f4"; ctx.lineWidth = 2; line(0, neckY + 2, 0, hipY); for (let k = 0; k < 4; k++) { const yy = neckY + 6 + k * 6; ctx.beginPath(); ctx.moveTo(-8, yy + 2); ctx.quadraticCurveTo(0, yy - 2, 8, yy + 2); ctx.stroke(); } }
+    else if (type === "santa") { torso("#d63a3a"); ctx.fillStyle = "#ffffff"; ctx.fillRect(-11, hipY - 2, 22, 5); ctx.fillRect(-2, neckY, 4, hipY - neckY - 2); ctx.fillStyle = "#1d1b2e"; ctx.fillRect(-11, hipY - 10, 22, 5); ctx.fillStyle = "#ffd23f"; ctx.fillRect(-3, hipY - 10, 6, 5); }
+    else if (type === "unicorn") { torso("#ffffff", "#e8d4ff"); ctx.fillStyle = "#ff9ad8"; heartPath(1, shY + 2, 12); ctx.fill(); }
+  } else if (layer === "head") {
+    if (type === "astronaut") { ctx.fillStyle = "rgba(180,220,255,0.3)"; circle(0, headY, 19); ctx.strokeStyle = "#dfe8f5"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(0, headY, 19, 0, 7); ctx.stroke(); ctx.fillStyle = "rgba(255,255,255,0.7)"; ell(-8, headY - 9, 4, 7, 0.5); }
+    else if (type === "dino") { ctx.fillStyle = "#4fbf5a"; ctx.beginPath(); ctx.arc(0, headY - 1, 15, Math.PI * 0.95, Math.PI * 2.05); ctx.fill(); ctx.fillStyle = "#2f8a3a"; for (let k = 0; k < 4; k++) { const a = Math.PI * 1.15 + k * 0.28; const x = Math.cos(a) * 15, yy = headY - 1 + Math.sin(a) * 15; ctx.beginPath(); ctx.moveTo(x - 3, yy); ctx.lineTo(x * 1.35, yy - 5 + (headY - yy) * -0.3); ctx.lineTo(x + 3, yy); ctx.fill(); } }
+    else if (type === "robot") { ctx.fillStyle = "#aeb6c2"; rr(ctx, -14, headY - 14, 28, 28, 5); ctx.fill(); ctx.strokeStyle = "#5a636e"; ctx.lineWidth = 2; rr(ctx, -14, headY - 14, 28, 28, 5); ctx.stroke(); ctx.fillStyle = "#1d1b2e"; rr(ctx, -10, headY - 6, 22, 9, 4); ctx.fill(); ctx.fillStyle = "#5dff8a"; circle(-3, headY - 1.5, 2.4); circle(7, headY - 1.5, 2.4); line(0, headY - 14, 0, headY - 22); ctx.fillStyle = "#e84855"; circle(0, headY - 24, 3); }
+    else if (type === "unicorn") { ctx.fillStyle = "#ffffff"; ctx.beginPath(); ctx.arc(0, headY - 1, 15, Math.PI * 0.95, Math.PI * 2.05); ctx.fill(); ctx.fillStyle = "#fff3c2"; ctx.beginPath(); ctx.moveTo(-1, headY - 13); ctx.lineTo(9, headY - 13); ctx.lineTo(7, headY - 36); ctx.closePath(); ctx.fill(); ctx.fillStyle = "#ffb3d9"; ell(-10, headY - 12, 4, 6, -0.5); }
+    else if (type === "ninja") { ctx.fillStyle = "#1d1b2e"; ctx.beginPath(); ctx.arc(0, headY, 13.5, 0.05 * Math.PI, 0.95 * Math.PI); ctx.closePath(); ctx.fill(); ctx.beginPath(); ctx.arc(0, headY, 13.5, 1.15 * Math.PI, 1.85 * Math.PI); ctx.closePath(); ctx.fill(); }
+    else if (type === "skeleton") { ctx.fillStyle = "#1d1b2e"; circle(5.5, headY - 2, 4); circle(-3, headY - 2, 3.5); ctx.beginPath(); ctx.moveTo(1, headY + 2); ctx.lineTo(3, headY + 5); ctx.lineTo(-1, headY + 5); ctx.fill(); }
+    else if (type === "santa") { ctx.fillStyle = "#ffffff"; ctx.beginPath(); ctx.arc(2, headY + 6, 12, 0, Math.PI); ctx.fill(); circle(4, headY + 15, 6); }
+  }
+}
 function drawStickman(x, y, face, o) {
   const s = (o.scale || 1) * (o.giant ? 1.6 : 1), d = o.deco || S.deco, t = o.t || 0;
   const col = DECO.body.opts[d.body];
@@ -1270,18 +1377,24 @@ function drawStickman(x, y, face, o) {
   ctx.lineCap = "round"; ctx.lineJoin = "round";
   if (o.star) { ctx.fillStyle = "rgba(255,240,150,0.25)"; ell(0, -50, 38, 62); }
   if (d.cape > 0) drawCape(DECO.cape.opts[d.cape], shY, hipY, t, o.walkT, o.moving);
-  ctx.strokeStyle = o.star ? RAINBOW[Math.floor(t * 10) % 6] : col; ctx.lineWidth = 5;
+  const outfit = DECO.outfit.opts[d.outfit || 0], ys = { hipY, neckY, shY, headY };
+  const limb = OUTFIT_LIMB[outfit] || col, lw = OUTFIT_LIMB[outfit] ? 6.5 : 5;
+  if (outfit !== "none") drawOutfit(outfit, "back", ys, t, step);
+  ctx.strokeStyle = o.star ? RAINBOW[Math.floor(t * 10) % 6] : limb; ctx.lineWidth = lw;
   const f1x = step * 14, f1y = step > 0 ? -step * 5 : 0, f2x = -step * 14, f2y = step < 0 ? step * 5 : 0;
   const tuck = o.air ? 8 : 0;
   ctx.beginPath(); ctx.moveTo(0, hipY); ctx.lineTo(f1x / 2 + 4 + tuck, (hipY + f1y) / 2); ctx.lineTo(f1x, f1y - tuck); ctx.stroke();
   ctx.beginPath(); ctx.moveTo(0, hipY); ctx.lineTo(f2x / 2 + 4 + tuck, (hipY + f2y) / 2); ctx.lineTo(f2x, f2y - tuck); ctx.stroke();
   line(0, hipY, 0, neckY);
   line(0, shY, -8 - step * 6 + (o.swing != null ? -4 : 0), shY + 25);
+  if (outfit !== "none") drawOutfit(outfit, "front", ys, t, step);
+  ctx.strokeStyle = col;
   ctx.fillStyle = "#fffaf0"; ctx.beginPath(); ctx.arc(0, headY, 13, 0, 7); ctx.fill();
   ctx.lineWidth = 4.5; ctx.stroke();
   ctx.fillStyle = "#1d1b2e";
   if (o.hurt) { ctx.lineWidth = 2; ctx.strokeStyle = "#1d1b2e"; line(3, headY - 5, 8, headY); line(8, headY - 5, 3, headY); circle(5, headY + 6, 2.4); }
   else { circle(5.5, headY - 2, 2.3); ctx.strokeStyle = "#1d1b2e"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(4, headY + 2, 5, 0.25 * Math.PI, 0.75 * Math.PI); ctx.stroke(); }
+  if (outfit !== "none") drawOutfit(outfit, "head", ys, t, step);
   if (DECO.hat.opts[d.hat] === "pirate") { ctx.fillStyle = "#1d1b2e"; circle(6, headY - 2, 4); ctx.strokeStyle = "#1d1b2e"; ctx.lineWidth = 1.5; line(-12, headY - 8, 12, headY + 2); }
   drawHat(DECO.hat.opts[d.hat], headY, t);
   if (o.spin != null) {
@@ -1299,9 +1412,9 @@ function drawStickman(x, y, face, o) {
     else { ctx.strokeStyle = tr === "fire" ? "rgba(255,140,40," + (0.55 * a).toFixed(3) + ")" : tr === "hearts" ? "rgba(255,111,156," + (0.5 * a).toFixed(3) + ")" : tr === "stars" ? "rgba(255,225,77," + (0.5 * a).toFixed(3) + ")" : "rgba(255,255,255," + (0.45 * a).toFixed(3) + ")"; ctx.beginPath(); ctx.arc(0, shY, R, -2.1, Math.max(-2.0, sw * 0.9)); ctx.stroke(); }
   }
   const hx = Math.cos(arm) * 26, hy = shY + Math.sin(arm) * 26;
-  ctx.strokeStyle = col; ctx.lineWidth = 5; line(0, shY, hx, hy);
+  ctx.strokeStyle = limb; ctx.lineWidth = lw; line(0, shY, hx, hy);
   ctx.save(); ctx.translate(hx, hy); ctx.rotate(sw); drawSword(o.sword, d, t); ctx.restore();
-  ctx.fillStyle = col; circle(hx, hy, 4);
+  ctx.fillStyle = limb; circle(hx, hy, 4);
   ctx.restore();
 }
 
@@ -1481,7 +1594,7 @@ function drawHUD() {
   const cb = 1 + coinBump * 0.25;
   ctx.save(); ctx.translate(30, 62); ctx.scale(cb, cb); drawCoin(0, 0, 13, time * 2); ctx.restore();
   txt(fmtNum(S.coins), 52, 63, 28, "#ffe48a", "left", "#2a1d05", 6);
-  txt(SWORDS[S.sword].name + " sword · " + fmtNum(swordDmg()) + " damage", 16, 94, 15, "#e8e2ff", "left", "#1a1535", 4);
+  txt(SWORDS[S.equip].name + " sword · " + fmtNum(swordDmg()) + " damage", 16, 94, 15, "#e8e2ff", "left", "#1a1535", 4);
   let px = 16;
   for (const k in P.pow) if (P.pow[k] > 0) {
     const Pw = POWERS[k];
@@ -1527,7 +1640,7 @@ function drawTouchControls() {
   b = TB.swing;
   ctx.fillStyle = held("swing") ? "rgba(255,90,106,0.75)" : "rgba(255,90,106,0.5)"; circle(b.x, b.y, b.r);
   ctx.strokeStyle = "rgba(255,255,255,0.6)"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, 7); ctx.stroke();
-  ctx.save(); ctx.translate(b.x - 18, b.y + 18); ctx.rotate(-0.8); ctx.scale(0.7, 0.7); drawSword(S.sword, S.deco, time); ctx.restore();
+  ctx.save(); ctx.translate(b.x - 18, b.y + 18); ctx.rotate(-0.8); ctx.scale(0.7, 0.7); drawSword(S.equip, S.deco, time); ctx.restore();
   txt("SWING", b.x, b.y + 38, 13, "#fff", "center", "rgba(0,0,0,0.4)", 3);
 }
 function drawWorld() {
@@ -1541,6 +1654,7 @@ function drawWorld() {
   }
   for (const b of boxes) drawBox(b.x, b.y, b.t);
   for (const c of coins) drawCoin(c.x, c.y, 8, c.spin);
+  drawDrops();
   for (const z of zombies) if (z.dead) drawZombie(z);
   for (const z of zombies) if (!z.dead && z.type !== "boss") drawZombie(z);
   for (const z of zombies) if (!z.dead && z.type === "boss") drawZombie(z);
@@ -1549,7 +1663,7 @@ function drawWorld() {
   ctx.globalAlpha = blink ? 0.4 : 1;
   drawStickman(P.x, GROUND - P.alt, P.face, {
     t: time, walkT: P.walkT, moving: P.moving && state === "play" && P.alt === 0, hurt: P.hurt > 0 || state === "ko", air: P.alt > 0,
-    swing: P.swingT > 0 ? 1 - P.swingT / P.swingDur : null, sword: S.sword, deco: S.deco,
+    swing: P.swingT > 0 ? 1 - P.swingT / P.swingDur : null, sword: S.equip, deco: S.deco,
     giant: P.pow.giant > 0, star: P.pow.star > 0, spin: P.pow.tornado > 0 ? time * 20 : null
   });
   ctx.globalAlpha = 1;
@@ -1604,7 +1718,7 @@ function drawTitle() {
   ctx.fillStyle = "#8be26f";
   [[-120, 0.0], [-40, 0.8], [70, 0.3], [150, 1.4]].forEach(([dx, ph]) => { const l = 10 + ((time * 0.7 + ph) % 1.6) * 14; rr(ctx, W / 2 + dx, 140 + wob, 7, l, 3.5); ctx.fill(); });
   const demoSwing = (time % 1.6) / 0.5;
-  drawStickman(150, GROUND, 1, { t: time, sword: S.sword, deco: S.deco, swing: demoSwing < 1 ? demoSwing : null, scale: 1.35 });
+  drawStickman(150, GROUND, 1, { t: time, sword: S.equip, deco: S.deco, swing: demoSwing < 1 ? demoSwing : null, scale: 1.35 });
   S.pets.forEach((id, i) => { const fly = id === "dragon" || id === "ghost"; drawPet(id, fly ? (id === "dragon" ? 70 : 240) : (id === "puppy" ? 60 : 245), fly ? GROUND - 190 : GROUND, 1, time + i, 1.2); });
   const w = lvCfg(selLevel).world;
   const acc0 = WORLDS[w].accs.find(a => a !== "none") || "cone";
@@ -1680,10 +1794,10 @@ function drawReveal() {
   } else if (r.kind === "deco") {
     const D = DECO[r.key]; title = "SURPRISE!"; name = D.names[r.idx]; desc = "You found a secret! It's in Shop → Decorate.";
     const temp = Object.assign({}, S.deco); temp[r.key] = r.idx;
-    if (r.key === "body" || r.key === "hat" || r.key === "cape" || r.key === "trail") {
+    if (r.key === "body" || r.key === "hat" || r.key === "cape" || r.key === "trail" || r.key === "outfit") {
       const sp = (time % 1.2) / 0.5;
-      drawStickman(0, 90, 1, { t: time, sword: S.sword, deco: temp, scale: 1.9, swing: r.key === "trail" && sp < 1 ? sp : null });
-    } else { ctx.rotate(-0.5); ctx.translate(-70, 0); ctx.scale(2.8, 2.8); drawSword(S.sword, temp, time); }
+      drawStickman(0, 90, 1, { t: time, sword: S.equip, deco: temp, scale: 1.9, swing: r.key === "trail" && sp < 1 ? sp : null });
+    } else { ctx.rotate(-0.5); ctx.translate(-70, 0); ctx.scale(2.8, 2.8); drawSword(S.equip, temp, time); }
   }
   ctx.restore();
   txt(title, W / 2, 62, 52, "#ffd23f", "center", "#5a3a00", 10);
@@ -1734,9 +1848,9 @@ function drawShop() {
 function drawSwordsTab() {
   const y = PY + 70, h = 270;
   card(PX + 18, y, 410, h);
-  txt("Your sword", PX + 223, y + 24, 20, "#cfc6ff", "center");
-  ctx.save(); ctx.translate(PX + 160, y + 110); ctx.rotate(-0.35); ctx.scale(2.2, 2.2); drawSword(S.sword, S.deco, time); ctx.restore();
-  const M = SWORDS[S.sword];
+  txt("Using now", PX + 223, y + 24, 20, "#cfc6ff", "center");
+  ctx.save(); ctx.translate(PX + 160, y + 110); ctx.rotate(-0.35); ctx.scale(2.2, 2.2); drawSword(S.equip, S.deco, time); ctx.restore();
+  const M = SWORDS[S.equip];
   txt(M.name + " sword", PX + 223, y + 190, 26, "#ffffff", "center");
   fitTxt(M.dmg + " damage" + (M.power ? " · " + M.desc : ""), PX + 223, y + 224, 15, 390, M.power ? "#ffd23f" : "#e8e2ff", "center");
   const nx = PX + 446; card(nx, y, 416, h);
@@ -1755,12 +1869,14 @@ function drawSwordsTab() {
     buyButton(nx + 98, y + 214, 220, N.cost, false, buySword);
   }
   const sy = y + h + 12, n = SWORDS.length, sw = (PW - 36) / n;
-  txt("Sword path", PX + 24, sy + 6, 14, "#cfc6ff", "left");
+  txt("Your swords: tap any sword you own to use it!", PX + 24, sy + 6, 14, "#ffd23f", "left");
   for (let i = 0; i < n; i++) {
     const cx = PX + 18 + sw * i + sw / 2, cy = sy + 48;
     const owned = i <= S.sword, myst = i >= NEW_SWORD_FROM && i > S.seenSword;
     ctx.globalAlpha = owned ? 1 : 0.5;
-    if (i === S.sword) { ctx.fillStyle = "rgba(242,182,50,0.25)"; rr(ctx, cx - sw / 2 + 2, sy + 16, sw - 4, 72, 10); ctx.fill(); }
+    if (i === S.equip) { ctx.fillStyle = "rgba(242,182,50,0.35)"; rr(ctx, cx - sw / 2 + 2, sy + 16, sw - 4, 72, 10); ctx.fill(); ctx.strokeStyle = "#ffd23f"; ctx.lineWidth = 2.5; rr(ctx, cx - sw / 2 + 2, sy + 16, sw - 4, 72, 10); ctx.stroke(); }
+    else if (owned) { ctx.fillStyle = "rgba(255,255,255,0.07)"; rr(ctx, cx - sw / 2 + 2, sy + 16, sw - 4, 72, 10); ctx.fill(); }
+    if (owned) addBtn(cx - sw / 2 + 2, sy + 16, sw - 4, 72, () => equipSword(i));
     ctx.save(); ctx.translate(cx - 20, cy + 6); ctx.rotate(-0.6); ctx.scale(0.5, 0.5); drawSword(i, S.deco, time, myst); ctx.restore();
     if (myst) txt("?", cx, cy - 4, 20, "#ff9ad8", "center", "#1a1535", 4);
     fitTxt(myst ? "???" : SWORDS[i].name, cx, cy + 30, 11, sw - 4, owned ? "#fff" : "#9a93c8", "center");
@@ -1784,7 +1900,7 @@ function drawUpgradesTab() {
   upgradeCard(x, y, w, h, "Hearts", () => { heartPath(0, -24, 46); ctx.fillStyle = "#ff4d5e"; ctx.fill(); ctx.strokeStyle = "#a8152b"; ctx.lineWidth = 2.5; ctx.stroke(); txt(String(S.hearts), 0, -2, 20, "#fff", "center"); },
     S.hearts + " hearts", (S.hearts + 1) + " hearts", HEART_COSTS[S.hearts] || 0, S.hearts >= HEART_MAX, () => buyUp("heart"));
   x += w + gap;
-  upgradeCard(x, y, w, h, "Swing Speed", () => { ctx.strokeStyle = "rgba(255,255,255,0.6)"; ctx.lineWidth = 6; for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.arc(0, 10, 22 + i * 10, -2.6, -0.5); ctx.stroke(); } ctx.rotate(-1.2); ctx.scale(0.9, 0.9); drawSword(S.sword, S.deco, time); },
+  upgradeCard(x, y, w, h, "Swing Speed", () => { ctx.strokeStyle = "rgba(255,255,255,0.6)"; ctx.lineWidth = 6; for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.arc(0, 10, 22 + i * 10, -2.6, -0.5); ctx.stroke(); } ctx.rotate(-1.2); ctx.scale(0.9, 0.9); drawSword(S.equip, S.deco, time); },
     "Level " + S.swingLvl + " of 5", "Level " + (S.swingLvl + 1) + ": faster!", SWING_COSTS[S.swingLvl] || 0, S.swingLvl >= 5, () => buyUp("swing"));
   x += w + gap;
   upgradeCard(x, y, w, h, "Long Reach", () => { ctx.strokeStyle = "#8be26f"; ctx.lineWidth = 4; line(-40, 0, 40, 0); ctx.fillStyle = "#8be26f"; ctx.beginPath(); ctx.moveTo(48, 0); ctx.lineTo(36, -9); ctx.lineTo(36, 9); ctx.fill(); ctx.beginPath(); ctx.moveTo(-48, 0); ctx.lineTo(-36, -9); ctx.lineTo(-36, 9); ctx.fill(); },
@@ -1830,14 +1946,17 @@ function drawSwatch(key, idx, x, y, w, h) {
     addBtn(x, y, w, h, () => { sfx.no(); shopMsg = { text: "That's a secret! Find it in a mystery box.", t: 1.8 }; });
     return;
   }
-  if (key === "hat") {
+  if (key === "outfit") {
+    if (v === "none") { ctx.strokeStyle = "#7d74b8"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(x + w / 2, y + h / 2, 10, 0, 7); ctx.stroke(); line(x + w / 2 - 7, y + h / 2 + 7, x + w / 2 + 7, y + h / 2 - 7); }
+    else { ctx.save(); rr(ctx, x, y, w, h, 9); ctx.clip(); const temp = Object.assign({}, S.deco, { outfit: idx, hat: 0, cape: 0 }); drawStickman(x + w / 2 - 2, y + h + 30, 1, { t: 0, sword: 0, deco: temp, scale: 0.66 }); ctx.restore(); }
+  } else if (key === "hat") {
     ctx.save(); ctx.translate(x + w / 2, y + h - 2); ctx.scale(0.62, 0.62);
     ctx.fillStyle = "#fffaf0"; ctx.strokeStyle = "#1d1b2e"; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(0, -14, 13, 0, 7); ctx.fill(); ctx.stroke();
     if (v !== "none") drawHat(v, -14, time);
     ctx.restore();
   } else if (key === "pattern") {
     ctx.save(); ctx.translate(x + 4, y + h / 2); ctx.scale(0.62, 0.62);
-    const M = SWORDS[S.sword], L = 58;
+    const M = SWORDS[S.equip], L = 58;
     bladePath(L); ctx.fillStyle = M.rainbow ? "#ff9ad8" : M.blade; ctx.fill();
     if (v !== "plain") { ctx.save(); bladePath(L); ctx.clip(); drawPattern(v, L, M); ctx.restore(); }
     bladePath(L); ctx.strokeStyle = M.edge; ctx.lineWidth = 2; ctx.stroke();
@@ -1865,18 +1984,25 @@ function drawDecorate() {
   ctx.save(); rr(ctx, px, py, pw, ph, 14); ctx.clip();
   ctx.fillStyle = "#3e8a4c"; ctx.fillRect(px, py + ph - 60, pw, 60);
   const demo = (time % 2.2) / 0.55;
-  drawStickman(px + pw / 2 - 14, py + ph - 60, 1, { t: time, sword: S.sword, deco: S.deco, swing: demo < 1 ? demo : null, scale: 1.75 });
+  drawStickman(px + pw / 2 - 14, py + ph - 60, 1, { t: time, sword: S.equip, deco: S.deco, swing: demo < 1 ? demo : null, scale: 1.75 });
   ctx.restore();
   txt("Make it yours!", px + pw / 2, py + 22, 18, "#fff", "center");
-  const lockedN = lockedList().length, totalSecret = DECO_KEYS.reduce((n, k) => n + DECO[k].opts.length - DECO[k].base, 0);
+  const lockedN = lockedList().length, totalSecret = secretCount();
   fitTxt("Secrets found: " + (totalSecret - lockedN) + " / " + totalSecret, px + pw / 2, py + 44, 13, pw - 10, "#ff9ad8", "center");
-  const ox = PX + 246, sw = 48, sh = 38, step = 52, perRow = Math.floor((PX + PW - 14 - (ox + 84)) / step);
-  let y = PY + 70;
-  for (const key of DECO_KEYS) {
+  const ox = PX + 246;
+  ["Costume & hat", "Sword style"].forEach((label, i) => {
+    const bx = ox + i * 176, by = PY + 66, on = decoPage === i;
+    ctx.fillStyle = on ? "#8a3fd1" : "#2b2452"; rr(ctx, bx, by, 168, 34, 10); ctx.fill();
+    txt(label, bx + 84, by + 17, 15, on ? "#fff" : "#cfc6ff", "center");
+    addBtn(bx, by, 168, 34, () => { if (decoPage !== i) { decoPage = i; sfx.click(); } });
+  });
+  const sw = 50, sh = 42, step = 54, perRow = Math.floor((PX + PW - 14 - (ox + 92)) / step);
+  let y = PY + 112;
+  for (const key of DECO_PAGES[decoPage]) {
     const n = DECO[key].opts.length, lines = Math.ceil(n / perRow);
     txt(DECO[key].label, ox, y + sh / 2, 15, "#e8e2ff", "left");
-    for (let i = 0; i < n; i++) drawSwatch(key, i, ox + 84 + (i % perRow) * step, y + Math.floor(i / perRow) * (sh + 4), sw, sh);
-    y += lines * (sh + 4) + 5;
+    for (let i = 0; i < n; i++) drawSwatch(key, i, ox + 92 + (i % perRow) * step, y + Math.floor(i / perRow) * (sh + 5), sw, sh);
+    y += lines * (sh + 5) + 8;
   }
 }
 
